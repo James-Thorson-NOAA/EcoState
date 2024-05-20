@@ -1,0 +1,19 @@
+Package: EcoState
+Type: Package
+Title: State-Space Extension of EcoPath-with-EcoSim
+Version: 0.1.0
+Date: 2024-05-20
+Authors@R: c(
+    person(c("James", "T."), "Thorson", , "James.Thorson@noaa.gov", 
+	   role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7415-1010"))
+    )
+Maintainer: James T. Thorson <James.Thorson@noaa.gov>
+Description: Fits biomass dynamics to time-series of catch and biomass.
+License: GPL-3
+Depends:
+    R (>= 4.1.0),
+    RTMB
+Imports:
+Suggests:
+RoxygenNote: 7.3.1
