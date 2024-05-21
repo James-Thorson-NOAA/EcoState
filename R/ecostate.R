@@ -50,6 +50,11 @@ function( taxa,
           control = ecostate_control() ){
 
   # 
+  if( !all(c(fit_B,fit_Q,fit_B0,fit_eps) %in% taxa) ){
+    warning("Some `fit_B`, `fit_Q`, `fit_B0`, or `fit_eps` not in `taxa`")
+  }
+  
+  # 
   n_species = length(taxa)
   
   # Configuring inputs
@@ -162,6 +167,7 @@ function( taxa,
   #obj$fn(obj$par); obj$gr(obj$par)
   
   # 
+  #browser()
   start_time = Sys.time()
   opt = nlminb( start = obj$par, 
                 obj = obj$fn, 

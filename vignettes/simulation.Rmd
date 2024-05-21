@@ -31,21 +31,30 @@ library(EcoState)
 We first simulate new data.  To do so, we specify a 5-species ecosystem:
 
 ```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
-# Time-interval and number of species
-n_years = 40
-n_species = 5
+# Time-interval
+years = 1981:2020
+n_years = length(years)
+
+# Name taxa (optional, for illustration)
+taxa = c("Producer", "Consumer1", "Predator1", "Consumer2", "Predator2")
+n_taxa = length(taxa)
 
 # Ecopath-with-EcoSim parameters
+# Diet matrix
 DC_ij = matrix( c(
   0, 1, 0, 0.5, 0,
   0, 0, 1, 0.5, 0,
   0, 0, 0, 0,   0.5,
   0, 0, 0, 0,   0.5,
   0, 0, 0, 0,   0
-), byrow=TRUE, ncol=n_species)
-PB_i = c( 90, 5, 0.2, 3, 0.1 )         # Reciprocal of mean age according to Polovina-1984 ~= M
+), byrow=TRUE, ncol=length(taxa) )
+# Ratio of production to biomass:  Reciprocal of mean age according to Polovina-1984 ~= M
+PB_i = c( 90, 5, 0.2, 3, 0.1 )         
+# Ratio of consumption to biomass
 QB_i = c( 150, 10, 3, 15, 4 )
-V_ij = matrix( 2, nrow=n_species, ncol=n_species )
+# Functional response parameters
+V_ij = matrix( 2, nrow=n_taxa, ncol=n_taxa )
+# Equilibrium biomass
 B0_i = c(1, 1, 1, 1, 1)
 
 # Simulation parameters
@@ -58,25 +67,25 @@ We then loop through years while projecting dynamics, given that the two consume
 ```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
 # Simulate process errors
 rarray = \(x,dims=dim(x),sd) array( sd*rnorm(prod(dims)), dim=dims )
-deltaB_ti = rarray(dims=c(n_years,n_species),sd=1) * outer(rep(1,n_years),sigmaB_i)
+deltaB_ti = rarray(dims=c(n_years,n_taxa),sd=1) * outer(rep(1,n_years),sigmaB_i)
 
-# Choose solver and integration method
+# Choose method to integrate instantaneous rates for annual dynamics
 n_steps = 10
 project_vars = abm3pc_sys
 
 # Project forward
-Bobs_ti = Cobs_ti = B_ti = C_ti = matrix(NA, nrow=n_years, ncol=n_species )
+Bobs_ti = Cobs_ti = B_ti = C_ti = matrix(NA, nrow=n_years, ncol=n_taxa )
 B_ti[1,] = B0_i
 C_ti[1,] = NA
-for( t in seq_len(n_years)[-1] ){
+for( t in seq_along(years)[-1] ){
   # Fishing mortality ramps up for two predators
   F_t = c( 0, 0, t/n_years*0.2, 0, t/n_years*0.1 )
 
   # Integrate dynamics annually
   sim = project_vars(
         f = dBdt,
-        a = 0, 
-        b = 1,
+        a = years[t-1], 
+        b = years[t],
         n = n_steps,
         Pars = list( logB_i = log(B0_i),
                      logPB_i = log(PB_i),
@@ -85,38 +94,34 @@ for( t in seq_len(n_years)[-1] ){
                      DC_ij = DC_ij,
                      deltaB_i = deltaB_ti[t,],
                      logF_i = log(F_t),
-                     n_species = n_species ),
-        y0 = c( B_ti[t-1,], rep(0,n_species) ) )
+                     n_species = n_taxa ),
+        y0 = c( B_ti[t-1,], rep(0,n_taxa) ) )
   
   # Record results
-  B_ti[t,] = sim$y[nrow(sim$y),seq_len(n_species)]
-  C_ti[t,] = sim$y[nrow(sim$y),n_species+seq_len(n_species)]
+  B_ti[t,] = sim$y[nrow(sim$y),seq_len(n_taxa)]
+  C_ti[t,] = sim$y[nrow(sim$y),n_taxa+seq_len(n_taxa)]
 
   # Simulate measurement errors
-  Bobs_ti[t,] = B_ti[t,] * exp(0.1*rnorm(n_species))
-  Cobs_ti[t,] = ifelse(C_ti[t,]==0,NA,C_ti[t,]) * exp(0.1*rnorm(n_species))
+  Bobs_ti[t,] = B_ti[t,] * exp(0.1*rnorm(n_taxa))
+  Cobs_ti[t,] = ifelse(C_ti[t,]==0,NA,C_ti[t,]) * exp(0.1*rnorm(n_taxa))
 }
-
-#
-dimnames(Bobs_ti) = dimnames(Cobs_ti) = list( "Year" = seq_len(n_years),
-                                              "Taxon" = seq_len(n_species) ) 
 ```
 
 Next, we reformat simulated biomass and catch time-series into long-form data frames and fit them with `ecostate`
 
-```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Add dimension names
+dimnames(Bobs_ti) = dimnames(Cobs_ti) = list( "Year" = years,
+                                              "Taxon" = taxa ) 
+
 # reformat to longform data-frame
 Catch = na.omit(data.frame(expand.grid(dimnames(Cobs_ti)), "Mass"=as.vector(Cobs_ti)))
 Biomass = na.omit(data.frame(expand.grid(dimnames(Bobs_ti)), "Mass"=as.vector(Bobs_ti)))
 
-# Domain
-taxa = seq_len(n_species)
-years = seq_len(n_years)
-
 # Settings: specify what parameters to estimate
-fit_delta = 1:5   # process errors
-fit_Q = 1:5       # catchability coefficient
-fit_B0 = 1:5      # non-equilibrium initial condition
+fit_delta = taxa   # process errors
+fit_Q = taxa       # catchability coefficient
+fit_B0 = taxa      # non-equilibrium initial condition
 fit_B = c()       # equilibrium biomass
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
@@ -159,7 +164,6 @@ ggplot(results) +
   geom_line( aes(x=as.numeric(Year), y=True) ) + 
   facet_wrap( vars(Taxon), scale="free" ) +
   geom_line( aes(x=as.numeric(Year), y=Est), linetype="dotted" ) +
-  geom_ribbon( aes(x=as.numeric(Year), ymin=Est-SE, ymax=Est+SE), alpha=0.2) +
-  scale_y_continuous(trans='log')                
+  geom_ribbon( aes(x=as.numeric(Year), ymin=Est-SE, ymax=Est+SE), alpha=0.2)                
 ```
 
