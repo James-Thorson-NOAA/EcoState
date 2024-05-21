@@ -80,9 +80,9 @@ function( taxa,
   p = list( logB0ratio_i = rep(log(1), n_species),
             ln_sdB = log(0.1), 
             ln_sdC = log(0.1),
-            logB_i = log(B0_i),
+            logB_i = logB_i,
             logtau_i = rep(NA, n_species),
-            deltaB_ti = rarray(Bobs_ti, sd=0),
+            deltaB_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
             logq_i = rep( log(1), n_species) )      # , PB_i=PB_i
 
@@ -90,7 +90,7 @@ function( taxa,
   map = list()
   
   # 
-  p$logtau_i = ifelse(taxa %in% fit_delta, log(0.01*B0_i), NA)
+  p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
   
   # Catches
   map$logF_ti = factor( ifelse(is.na(Cobs_ti), NA, seq_len(prod(dim(Cobs_ti)))) )
@@ -134,6 +134,7 @@ function( taxa,
                   }else{
                     project_vars = rk4sys 
                   }
+                  n_species = n_species
                   environment()
   })
   environment(compute_nll) <- data
@@ -145,16 +146,18 @@ function( taxa,
                   logB_i = logB_i
                   DC_ij = DC_ij
                   logV_ij = logV_ij
+                  n_species = n_species
                   environment()
   })
   environment(dBdt) <- data2
 
   # Make TMB object
+  #browser()
   obj <- MakeADFun( func = compute_nll, 
                     parameters = p,
                     map = map,
                     random = c("deltaB_ti"),
-                    profile = profile,
+                    profile = control$profile,
                     silent = TRUE )
   #obj$fn(obj$par); obj$gr(obj$par)
   
