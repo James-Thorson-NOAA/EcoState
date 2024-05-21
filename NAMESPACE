@@ -6,3 +6,6 @@ export(dBdt)
 export(ecostate)
 export(ecostate_control)
 export(rk4sys)
+
+# Edited by hand
+import("RTMB")

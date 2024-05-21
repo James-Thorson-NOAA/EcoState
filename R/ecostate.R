@@ -43,10 +43,10 @@ function( taxa,
           QB,
           B,
           DC,
-          fit_B,
-          fit_Q,
-          fit_B0,
-          fit_eps,
+          fit_B = vector(),
+          fit_Q = vector(),
+          fit_B0 = vector(),
+          fit_eps = vector(),
           control = ecostate_control() ){
 
   # 
@@ -58,6 +58,9 @@ function( taxa,
   logB_i = log(B[taxa])
   DC_ij = DC[taxa,taxa]
   logV_ij = matrix( log(2), nrow=n_species, ncol=n_species )
+  if(any(is.na(c(logPB_i,logQB_i,logB_i,DC_ij)))){
+    stop("Check `PB` `QB` `B` and `DC` for NAs or `taxa` that are not provided")
+  }
   
   # Convert long-form `catch` to wide-form Cobs_ti
   Cobs_ti = tapply( catch[,'Mass'], FUN=mean, INDEX = list(
@@ -121,13 +124,37 @@ function( taxa,
   # Fix biomass for primary producers .... seems to be stiff if trying to fix more than one variable
   map$logB_i = factor( ifelse(taxa %in% fit_B, seq_len(n_species), NA) )
   
+  # Load data in environment for function "compute_nll"
+  data = local({
+                  Bobs_ti = Bobs_ti
+                  Cobs_ti = Cobs_ti
+                  n_steps = control$n_steps 
+                  if( control$integration_method == "ABM"){
+                    project_vars = abm3pc_sys 
+                  }else{
+                    project_vars = rk4sys 
+                  }
+                  environment()
+  })
+  environment(compute_nll) <- data
+
+  # Load data in environment for function "dBdt"
+  data2 = local({
+                  logPB_i = logPB_i
+                  logQB_i = logQB_i
+                  logB_i = logB_i
+                  DC_ij = DC_ij
+                  logV_ij = logV_ij
+                  environment()
+  })
+  environment(dBdt) <- data2
+
   # Make TMB object
-  #browser()
   obj <- MakeADFun( func = compute_nll, 
                     parameters = p,
                     map = map,
                     random = c("deltaB_ti"),
-                    profile = c("logF_ti"),
+                    profile = profile,
                     silent = TRUE )
   #obj$fn(obj$par); obj$gr(obj$par)
   
@@ -141,11 +168,15 @@ function( taxa,
   sdrep = sdreport(obj)              
   rep = obj$report()
   parhat = obj$env$parList()
-
+  environment()
+  on.exit( gc() )  # Seems necessary after environment()
+  
   # bundle and return output
   internal = list(
     parhat = parhat,
-    control = control
+    control = control,
+    Bobs_ti = Bobs_ti,
+    Cobs_ti = Cobs_ti
   )
   out = list(
     obj = obj,
@@ -192,12 +223,17 @@ function( nlminb_loops = 1,
           iter.max = 1000,
           getsd = TRUE,
           silent = getOption("ecostate.silent", TRUE),
-          trace = getOption("ecostate.trace", 0),
+          trace = getOption("ecostate.trace", 1),
           verbose = getOption("ecostate.verbose", FALSE),
-          profile = c(),
+          profile = c("logF_ti"),
           tmb_par = NULL,
-          getJointPrecision = FALSE ){
+          getJointPrecision = FALSE,
+          integration_method = c("ABM","RK4"),
+          n_steps = 10 ){
 
+  #
+  integration_method = match.arg(integration_method)
+  
   # Return
   structure( list(
     nlminb_loops = nlminb_loops,
@@ -210,7 +246,9 @@ function( nlminb_loops = 1,
     verbose = verbose,
     profile = profile,
     tmb_par = tmb_par,
-    getJointPrecision = getJointPrecision
+    getJointPrecision = getJointPrecision,
+    integration_method = integration_method,
+    n_steps = n_steps
   ), class = "ecostate_control" )
 }
 
