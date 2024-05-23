@@ -50,7 +50,8 @@ function( p ) {
     M_ti[t,] = out$M_i
     # Must calculate during loop because G_ti is NA for t=1
     P_ti[t,] = G_ti[t,] / Bhat_ti[t,]
-    deltaBB_ti[t,] = p$deltaB_ti[t,] / Bhat_ti[t,]
+    #deltaBB_ti[t,] = p$deltaB_ti[t,] / Bhat_ti[t,]
+    deltaBB_ti[t,] = p$deltaB_ti[t,]
   }
   F_ti = exp(p$logF_ti)
   Z_ti = F_ti + M_ti 

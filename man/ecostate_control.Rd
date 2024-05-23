@@ -11,11 +11,13 @@ ecostate_control(
   iter.max = 1000,
   getsd = TRUE,
   silent = getOption("ecostate.silent", TRUE),
-  trace = getOption("ecostate.trace", 0),
+  trace = getOption("ecostate.trace", 1),
   verbose = getOption("ecostate.verbose", FALSE),
-  profile = c(),
+  profile = c("logF_ti"),
   tmb_par = NULL,
-  getJointPrecision = FALSE
+  getJointPrecision = FALSE,
+  integration_method = c("ABM", "RK4"),
+  n_steps = 10
 )
 }
 \arguments{

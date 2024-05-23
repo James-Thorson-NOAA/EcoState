@@ -13,15 +13,15 @@ ecostate(
   QB,
   B,
   DC,
-  fit_B,
-  fit_Q,
-  fit_B0,
-  fit_eps,
+  fit_B = vector(),
+  fit_Q = vector(),
+  fit_B0 = vector(),
+  fit_eps = vector(),
   control = ecostate_control()
 )
 }
 \arguments{
-\item{taxa}{Character vector of taxa included in model}
+\item{taxa}{Character vector of taxa included in model.}
 
 \item{years}{Integer-vector of years included in model}
 
@@ -63,5 +63,8 @@ settings.}
 Estimate parameters for an EcoState model
 }
 \details{
-todo
+All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
+but additional taxa can be in \code{QB}, \code{PB}, \code{B}, and \code{DC} that
+are not in \code{taxa}.  So \code{taxa} can be used to redefine the set of modeled
+species without changing other inputs
 }

@@ -4,7 +4,7 @@
 #' @description 
 #' Estimate parameters for an EcoState model
 #'
-#' @param taxa Character vector of taxa included in model
+#' @param taxa Character vector of taxa included in model. 
 #' @param years Integer-vector of years included in model                  
 #' @param catch long-form data frame with columns \code{Mass}, \code{Year}
 #'        and  \code{Taxa}
@@ -31,7 +31,10 @@
 #'        settings.
 #'
 #' @details
-#' todo
+#' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
+#' but additional taxa can be in \code{QB}, \code{PB}, \code{B}, and \code{DC} that
+#' are not in \code{taxa}.  So \code{taxa} can be used to redefine the set of modeled
+#' species without changing other inputs
 #'
 #' @export
 ecostate <-
@@ -51,7 +54,7 @@ function( taxa,
 
   # 
   if( !all(c(fit_B,fit_Q,fit_B0,fit_eps) %in% taxa) ){
-    warning("Some `fit_B`, `fit_Q`, `fit_B0`, or `fit_eps` not in `taxa`")
+    if(isFALSE(control$silent)) warning("Some `fit_B`, `fit_Q`, `fit_B0`, or `fit_eps` not in `taxa`")
   }
   
   # 
@@ -66,6 +69,13 @@ function( taxa,
   if(any(is.na(c(logPB_i,logQB_i,logB_i,DC_ij)))){
     stop("Check `PB` `QB` `B` and `DC` for NAs or `taxa` that are not provided")
   }
+  
+  # Rescale DC_ij to sum to 1 by predator
+  if( any(abs(colSums(DC_ij)-1) > 0.01) ){
+    if(isFALSE(control$silent)) message("Rescaling columns of `DC` to sum to one")
+  }
+  colsums = colSums(DC_ij)
+  DC_ij = DC_ij / outer( rep(1,nrow(DC_ij)), ifelse(colsums==0,1,colsums) )
   
   # Convert long-form `catch` to wide-form Cobs_ti
   Cobs_ti = tapply( catch[,'Mass'], FUN=mean, INDEX = list(
@@ -95,7 +105,8 @@ function( taxa,
   map = list()
   
   # 
-  p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
+  #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
+  p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01), NA)
   
   # Catches
   map$logF_ti = factor( ifelse(is.na(Cobs_ti), NA, seq_len(prod(dim(Cobs_ti)))) )
@@ -173,7 +184,6 @@ function( taxa,
                 obj = obj$fn, 
                 gr = obj$gr,
                 control = list(eval.max=control$eval.max, iter.max=control$iter.max, trace=control$trace) )
-  run_time = Sys.time() - start_time
   sdrep = sdreport(obj)              
   rep = obj$report()
   parhat = obj$env$parList()
@@ -185,7 +195,12 @@ function( taxa,
     parhat = parhat,
     control = control,
     Bobs_ti = Bobs_ti,
-    Cobs_ti = Cobs_ti
+    Cobs_ti = Cobs_ti,
+    logPB_i = logPB_i, 
+    logQB_i = logQB_i, 
+    logB_i = logB_i, 
+    DC_ij = DC_ij, 
+    logV_ij = logV_ij
   )
   out = list(
     obj = obj,

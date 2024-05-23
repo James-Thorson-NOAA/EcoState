@@ -53,8 +53,9 @@ function( Time,
   
   # Assemble dynamics
   dBdt_i = G_i - rowSums(Q_ij) - M0_i*Bt_i
-  # Include stochasticity
-  dBdt_i = dBdt_i + deltaB_i
+  # Include stochasticity ... as function of Bt_i
+  #dBdt_i = dBdt_i + deltaB_i
+  dBdt_i = dBdt_i + deltaB_i*Bt_i
   # Augment with fishing mortality and catches
   dBdt_i = c( dBdt_i - Bt_i*exp(logF_i), Bt_i*exp(logF_i) )
   
