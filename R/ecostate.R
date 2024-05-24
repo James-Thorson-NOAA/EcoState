@@ -137,6 +137,17 @@ function( taxa,
   p$ln_sdC = log(0.1)
   map$ln_sdC = factor(NA)
   
+  # User-supplied parameters
+  if( !is.null(control$tmb_par) ){
+    # Check shape but not numeric values, and give informative error
+    attr(p,"check.passed") = attr(control$tmb_par,"check.passed")
+    if( isTRUE(all.equal(control$tmb_par, p, tolerance=Inf)) ){
+      p = control$tmb_par
+    }else{
+      stop("Not using `control$tmb_par` because it has some difference from `p` built internally")
+    }
+  }
+
   # Fix biomass for primary producers .... seems to be stiff if trying to fix more than one variable
   map$logB_i = factor( ifelse(taxa %in% fit_B, seq_len(n_species), NA) )
   

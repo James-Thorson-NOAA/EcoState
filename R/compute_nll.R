@@ -15,6 +15,7 @@ function( p ) {
   
   # Objects to save
   deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
+  Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   
   # Initial condition
   Bhat_ti[1,] = exp(p$logB_i + p$logB0ratio_i)
@@ -48,6 +49,7 @@ function( p ) {
                 what = "stuff" )
     G_ti[t,] = out$G_i
     M_ti[t,] = out$M_i
+    Q_tij[t,,] = out$Q_ij
     # Must calculate during loop because G_ti is NA for t=1
     P_ti[t,] = G_ti[t,] / Bhat_ti[t,]
     #deltaBB_ti[t,] = p$deltaB_ti[t,] / Bhat_ti[t,]
@@ -86,6 +88,7 @@ function( p ) {
   REPORT( Z_ti )
   REPORT( P_ti )
   REPORT( deltaBB_ti )
+  REPORT( Q_tij )
   ADREPORT( Bhat_ti )
   ADREPORT( Chat_ti )
   ADREPORT( Bexp_ti )

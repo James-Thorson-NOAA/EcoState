@@ -68,6 +68,6 @@ function( Time,
     # Predation mortality .. removed because it doesn't vary over time
     #M2_i = (DC_ij %*% (B_i*QB_i))[,1] / B_i
     # Bundle and return
-    return(list(EE_i=EE_i, GE_i=GE_i, M0_i=M0_i, Q_ij=Q_ij, G_i=G_i, M_i=M_i))
+    return(list(EE_i=EE_i, GE_i=GE_i, M0_i=M0_i, Q_ij=Q_ij, G_i=G_i, M_i=M_i, Qe_ij=Qe_ij))
   }
 }
