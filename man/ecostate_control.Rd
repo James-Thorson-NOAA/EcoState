@@ -16,7 +16,7 @@ ecostate_control(
   profile = c("logF_ti"),
   tmb_par = NULL,
   getJointPrecision = FALSE,
-  integration_method = c("ABM", "RK4"),
+  integration_method = c("ABM", "RK4", "rk4", "lsoda"),
   n_steps = 10
 )
 }
@@ -47,6 +47,12 @@ to `tinyVAST(...)$internal$parlist`}
 
 \item{getJointPrecision}{whether to get the joint precision matrix.  Passed
 to \code{\link[TMB]{sdreport}}.}
+
+\item{integration_method}{What numerical integration method to use. \code{"ABM"}
+uses a native-R versions of Adam-Bashford, and code{"RK4"} uses a native-R
+version of Runge-Kutta-4, where both are adapted from \code{pracma} functions.
+\code{"rk4"} and \code{lsoda} use those methods
+from \code{deSolve::ode} as implemented by \code{RTMBode::ode}}
 }
 \description{
 Define a list of control parameters.

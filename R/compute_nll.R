@@ -20,12 +20,31 @@ function( p ) {
   # Initial condition
   Bhat_ti[1,] = exp(p$logB_i + p$logB0ratio_i)
   
+  if( FALSE ){
+    t = 2
+    p_t = p
+    p_t$deltaB_i = p$deltaB_ti[t,]
+    p_t$logF_i = p$logF_ti[t,]
+    n_steps = 10
+    y0 = c(Bhat_ti[t-1,], rep(0,n_species))
+    proj = myode(
+          f = dBdt,
+          a = 0, 
+          b = 1,
+          n = n_steps,
+          Pars = p_t,
+          y0 = y0 )
+  }
+  
   # Loop through years
   for( t in 2:nrow(Bhat_ti) ){
     # Assemble inputs
     p_t = p
     p_t$deltaB_i = p$deltaB_ti[t,]
     p_t$logF_i = p$logF_ti[t,]
+    # RTMBode::ode requires y0 have names
+    y0 = c(Bhat_ti[t-1,], rep(0,n_species))
+    names(y0) = paste0("var_",seq_along(y0))
     # Project dynamics
     proj = project_vars(
           f = dBdt,
@@ -33,7 +52,7 @@ function( p ) {
           b = 1,
           n = n_steps,
           Pars = p_t,
-          y0 = c(Bhat_ti[t-1,], rep(0,n_species)) )
+          y0 = y0 )
     # Average biomass
     for( i in seq_len(n_species) ){
       Bhatmean_ti[t,i] = mean(proj$y[,i])

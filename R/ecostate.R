@@ -158,8 +158,12 @@ function( taxa,
                   n_steps = control$n_steps 
                   if( control$integration_method == "ABM"){
                     project_vars = abm3pc_sys 
-                  }else{
+                  }else if( control$integration_method =="RK4"){
                     project_vars = rk4sys 
+                  }else{
+                    project_vars = function(f, a, b, y0, n, Pars){
+                      myode( f, a, b, y0, n, Pars, method=control$integration_method )
+                    }
                   }
                   n_species = n_species
                   environment()
@@ -178,6 +182,17 @@ function( taxa,
   })
   environment(dBdt) <- data2
 
+  # Load method into function `myode`
+  #data3 = local({ 
+  #                method = control$integration_method
+  #                environment() 
+  #})
+  #environment(myode) = data3
+
+  if( FALSE ){
+    compute_nll(p)
+  }
+
   # Make TMB object
   #browser()
   obj <- MakeADFun( func = compute_nll, 
@@ -185,7 +200,7 @@ function( taxa,
                     map = map,
                     random = c("deltaB_ti"),
                     profile = control$profile,
-                    silent = TRUE )
+                    silent = control$silent )
   #obj$fn(obj$par); obj$gr(obj$par)
   
   # 
@@ -249,6 +264,11 @@ function( taxa,
 #'   `control` in [stats::nlminb()].
 #' @param getJointPrecision whether to get the joint precision matrix.  Passed
 #'        to \code{\link[TMB]{sdreport}}.
+#' @param integration_method What numerical integration method to use. \code{"ABM"}
+#'        uses a native-R versions of Adam-Bashford, and code{"RK4"} uses a native-R
+#'        version of Runge-Kutta-4, where both are adapted from \code{pracma} functions.
+#'        \code{"rk4"} and \code{lsoda} use those methods
+#'        from \code{deSolve::ode} as implemented by \code{RTMBode::ode}
 #'
 #' @export
 ecostate_control <-
@@ -263,7 +283,7 @@ function( nlminb_loops = 1,
           profile = c("logF_ti"),
           tmb_par = NULL,
           getJointPrecision = FALSE,
-          integration_method = c("ABM","RK4"),
+          integration_method = c( "ABM", "RK4", "rk4", "lsoda" ),
           n_steps = 10 ){
 
   #

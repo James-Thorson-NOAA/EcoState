@@ -5,6 +5,7 @@ export(compute_nll)
 export(dBdt)
 export(ecostate)
 export(ecostate_control)
+export(myode)
 export(rk4sys)
 
 # Edited by hand

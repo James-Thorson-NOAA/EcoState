@@ -16,5 +16,6 @@ Depends:
 Imports:
     RTMB
 Suggests:
-    ggplot2
+    ggplot2,
+    RTMBode
 RoxygenNote: 7.3.1
