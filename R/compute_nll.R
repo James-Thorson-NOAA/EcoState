@@ -14,7 +14,7 @@ compute_nll <-
 function( p ) { 
   
   # Objects to save
-  deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
+  dBdt0_ti = deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   
   # Initial condition
@@ -42,9 +42,11 @@ function( p ) {
     p_t = p
     p_t$deltaB_i = p$deltaB_ti[t,]
     p_t$logF_i = p$logF_ti[t,]
+
     # RTMBode::ode requires y0 have names
     y0 = c(Bhat_ti[t-1,], rep(0,n_species))
     names(y0) = paste0("var_",seq_along(y0))
+
     # Project dynamics
     proj = project_vars(
           f = dBdt,
@@ -53,25 +55,28 @@ function( p ) {
           n = n_steps,
           Pars = p_t,
           y0 = y0 )
+
     # Average biomass
     for( i in seq_len(n_species) ){
       Bhatmean_ti[t,i] = mean(proj$y[,i])
     }
+
     # Record variables
     Bhat_ti[t,] = proj$y[nrow(proj$y),seq_len(n_species)]
     Chat_ti[t,] = proj$y[nrow(proj$y),n_species+seq_len(n_species)]
     M2_ti[t,] = (DC_ij %*% (Bhatmean_ti[t,] * exp(logQB_i))) / Bhatmean_ti[t,]
-    # Record more
+
+    # Record more using midpoint biomass Bhatmean_ti
     out = dBdt( Time = 0, 
-                State = c(Bhat_ti[t,], rep(0,n_species)),
+                State = c(Bhatmean_ti[t,], rep(0,n_species)),
                 Pars = p_t,
                 what = "stuff" )
     G_ti[t,] = out$G_i
     M_ti[t,] = out$M_i
     Q_tij[t,,] = out$Q_ij
+    dBdt0_ti[t,] = out$dBdt0_i
     # Must calculate during loop because G_ti is NA for t=1
     P_ti[t,] = G_ti[t,] / Bhat_ti[t,]
-    #deltaBB_ti[t,] = p$deltaB_ti[t,] / Bhat_ti[t,]
     deltaBB_ti[t,] = p$deltaB_ti[t,]
   }
   F_ti = exp(p$logF_ti)
@@ -108,6 +113,7 @@ function( p ) {
   REPORT( P_ti )
   REPORT( deltaBB_ti )
   REPORT( Q_tij )
+  REPORT( dBdt0_ti );
   ADREPORT( Bhat_ti )
   ADREPORT( Chat_ti )
   ADREPORT( Bexp_ti )
@@ -117,6 +123,7 @@ function( p ) {
   ADREPORT( Z_ti )
   ADREPORT( P_ti )
   ADREPORT( deltaBB_ti )
+  ADREPORT( dBdt0_ti )
   
   return(jnll)
 }

@@ -53,6 +53,7 @@ function( taxa,
           control = ecostate_control() ){
 
   # 
+  start_time = Sys.time()
   if( !all(c(fit_B,fit_Q,fit_B0,fit_eps) %in% taxa) ){
     if(isFALSE(control$silent)) warning("Some `fit_B`, `fit_Q`, `fit_B0`, or `fit_eps` not in `taxa`")
   }
@@ -205,14 +206,26 @@ function( taxa,
   
   # 
   #browser()
-  start_time = Sys.time()
   opt = nlminb( start = obj$par, 
                 obj = obj$fn, 
                 gr = obj$gr,
                 control = list(eval.max=control$eval.max, iter.max=control$iter.max, trace=control$trace) )
-  sdrep = sdreport(obj)              
   rep = obj$report()
   parhat = obj$env$parList()
+
+  # sdreport
+  if( isTRUE(control$getsd) ){
+    hessian.fixed = optimHess( par = opt$par, 
+                      fn = obj$fn, 
+                      gr = obj$gr )
+    sdrep = sdreport( obj,
+                      par.fixed = opt$par,
+                      hessian.fixed = hessian.fixed,
+                      getJointPrecision = control$getJointPrecision )
+  }else{
+    Hess = sdrep = NULL
+  }
+
   environment()
   on.exit( gc() )  # Seems necessary after environment()
   
@@ -226,7 +239,8 @@ function( taxa,
     logQB_i = logQB_i, 
     logB_i = logB_i, 
     DC_ij = DC_ij, 
-    logV_ij = logV_ij
+    logV_ij = logV_ij,
+    hessian.fixed = hessian.fixed
   )
   out = list(
     obj = obj,

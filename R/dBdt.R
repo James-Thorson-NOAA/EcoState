@@ -52,10 +52,9 @@ function( Time,
   #G_i = ifelse( colSums(DC_ij)==0, ( diag(V_ij) * Ypred_j / ( diag(V_ij) - 1 + Ypred_j ) ) * B_i * PB_i, G_i )
   
   # Assemble dynamics
-  dBdt_i = G_i - rowSums(Q_ij) - M0_i*Bt_i
+  dBdt0_i = G_i - rowSums(Q_ij) - M0_i*Bt_i
   # Include stochasticity ... as function of Bt_i
-  #dBdt_i = dBdt_i + deltaB_i
-  dBdt_i = dBdt_i + deltaB_i*Bt_i
+  dBdt_i = dBdt0_i + deltaB_i*Bt_i
   # Augment with fishing mortality and catches
   dBdt_i = c( dBdt_i - Bt_i*exp(logF_i), Bt_i*exp(logF_i) )
   
@@ -68,6 +67,6 @@ function( Time,
     # Predation mortality .. removed because it doesn't vary over time
     #M2_i = (DC_ij %*% (B_i*QB_i))[,1] / B_i
     # Bundle and return
-    return(list(EE_i=EE_i, GE_i=GE_i, M0_i=M0_i, Q_ij=Q_ij, G_i=G_i, M_i=M_i, Qe_ij=Qe_ij))
+    return( list(EE_i=EE_i, GE_i=GE_i, M0_i=M0_i, Q_ij=Q_ij, G_i=G_i, M_i=M_i, Qe_ij=Qe_ij, dBdt0_i=dBdt0_i) )
   }
 }
