@@ -16,7 +16,7 @@ ecostate_control(
   profile = c("logF_ti"),
   tmb_par = NULL,
   getJointPrecision = FALSE,
-  integration_method = c("ABM", "RK4", "rk4", "lsoda"),
+  integration_method = c("ABM", "RK4", "ode23", "rk4", "lsoda"),
   n_steps = 10
 )
 }
@@ -49,8 +49,10 @@ to `tinyVAST(...)$internal$parlist`}
 to \code{\link[TMB]{sdreport}}.}
 
 \item{integration_method}{What numerical integration method to use. \code{"ABM"}
-uses a native-R versions of Adam-Bashford, and code{"RK4"} uses a native-R
-version of Runge-Kutta-4, where both are adapted from \code{pracma} functions.
+uses a native-R versions of Adam-Bashford, code{"RK4"} uses a native-R
+version of Runge-Kutta-4, and code{"ode23"} uses a native-R
+version of adaptive Runge-Kutta-23, 
+where all are adapted from \code{pracma} functions.
 \code{"rk4"} and \code{lsoda} use those methods
 from \code{deSolve::ode} as implemented by \code{RTMBode::ode}}
 }

@@ -57,7 +57,9 @@ function( taxa,
   if( !all(c(fit_B,fit_Q,fit_B0,fit_eps) %in% taxa) ){
     if(isFALSE(control$silent)) warning("Some `fit_B`, `fit_Q`, `fit_B0`, or `fit_eps` not in `taxa`")
   }
-  
+  if( any(biomass$Mass==0) ) stop("`biomass$Mass` cannot include zeros, given the assumed lognormal distribution")
+  if( any(catch$Mass==0) ) stop("`catch$Mass` cannot include zeros, given the assumed lognormal distribution")
+
   # 
   n_species = length(taxa)
   
@@ -204,12 +206,26 @@ function( taxa,
                     silent = control$silent )
   #obj$fn(obj$par); obj$gr(obj$par)
   
-  # 
-  #browser()
-  opt = nlminb( start = obj$par, 
-                obj = obj$fn, 
-                gr = obj$gr,
-                control = list(eval.max=control$eval.max, iter.max=control$iter.max, trace=control$trace) )
+  # Optimize
+  opt = list( "par"=obj$par )
+  for( i in seq_len(max(0,control$nlminb_loops)) ){
+    if( isFALSE(control$quiet) ) message("Running nlminb_loop #", i)
+    opt = nlminb( start = opt$par,
+                  objective = obj$fn,
+                  gradient = obj$gr,
+                  control = list( eval.max = control$eval.max,
+                                  iter.max = control$iter.max,
+                                  trace = control$trace ) )
+  }
+
+  # Newtonsteps
+  for( i in seq_len(max(0,control$newton_loops)) ){
+    if( isFALSE(control$quiet) ) message("Running newton_loop #", i)
+    g = as.numeric( obj$gr(opt$par) )
+    h = optimHess(opt$par, fn=obj$fn, gr=obj$gr)
+    opt$par = opt$par - solve(h, g)
+    opt$objective = obj$fn(opt$par)
+  }
   rep = obj$report()
   parhat = obj$env$parList()
 
@@ -223,7 +239,7 @@ function( taxa,
                       hessian.fixed = hessian.fixed,
                       getJointPrecision = control$getJointPrecision )
   }else{
-    Hess = sdrep = NULL
+    hessian.fixed = sdrep = NULL
   }
 
   environment()
@@ -279,8 +295,10 @@ function( taxa,
 #' @param getJointPrecision whether to get the joint precision matrix.  Passed
 #'        to \code{\link[TMB]{sdreport}}.
 #' @param integration_method What numerical integration method to use. \code{"ABM"}
-#'        uses a native-R versions of Adam-Bashford, and code{"RK4"} uses a native-R
-#'        version of Runge-Kutta-4, where both are adapted from \code{pracma} functions.
+#'        uses a native-R versions of Adam-Bashford, code{"RK4"} uses a native-R
+#'        version of Runge-Kutta-4, and code{"ode23"} uses a native-R
+#'        version of adaptive Runge-Kutta-23, 
+#'        where all are adapted from \code{pracma} functions.
 #'        \code{"rk4"} and \code{lsoda} use those methods
 #'        from \code{deSolve::ode} as implemented by \code{RTMBode::ode}
 #'
@@ -297,7 +315,7 @@ function( nlminb_loops = 1,
           profile = c("logF_ti"),
           tmb_par = NULL,
           getJointPrecision = FALSE,
-          integration_method = c( "ABM", "RK4", "rk4", "lsoda" ),
+          integration_method = c( "ABM", "RK4", "ode23", "rk4", "lsoda" ),
           n_steps = 10 ){
 
   #
@@ -321,3 +339,27 @@ function( nlminb_loops = 1,
   ), class = "ecostate_control" )
 }
 
+#' @title Print fitted ecostate object
+#'
+#' @description Prints output from fitted ecostate model
+#'
+#' @param x Output from \code{\link{ecostate}}
+#' @param ... Not used
+#'
+#' @return
+#' No return value, called to provide clean terminal output when calling fitted
+#' object in terminal.
+#'
+#' @method print ecostate
+#' @export
+print.ecostate <-
+function( x,
+          ... ){
+  cat("Fitted using ", x$internal$control$integration_method, " using ", x$internal$control$n_steps, " steps")
+  cat("\nRun time: " )
+  print(x$run_time)
+  if( !is.null(x$sdrep) ){
+    cat("\nEstimates: ")
+    print(x$sdrep)
+  }
+}
