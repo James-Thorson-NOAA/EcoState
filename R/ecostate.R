@@ -168,6 +168,7 @@ function( taxa,
                       myode( f, a, b, y0, n, Pars, method=control$integration_method )
                     }
                   }
+                  F_type = control$F_type
                   n_species = n_species
                   environment()
   })
@@ -181,6 +182,7 @@ function( taxa,
                   DC_ij = DC_ij
                   logV_ij = logV_ij
                   n_species = n_species
+                  F_type = control$F_type
                   environment()
   })
   environment(dBdt) <- data2
@@ -301,6 +303,9 @@ function( taxa,
 #'        where all are adapted from \code{pracma} functions.
 #'        \code{"rk4"} and \code{lsoda} use those methods
 #'        from \code{deSolve::ode} as implemented by \code{RTMBode::ode}
+#' @param F_type whether to integrate catches along with biomass (\code{"integrated"})
+#'        or calculate catches from the Baranov catch equation applied to average 
+#'        biomass (\code{"averaged"})
 #'
 #' @export
 ecostate_control <-
@@ -316,10 +321,12 @@ function( nlminb_loops = 1,
           tmb_par = NULL,
           getJointPrecision = FALSE,
           integration_method = c( "ABM", "RK4", "ode23", "rk4", "lsoda" ),
-          n_steps = 10 ){
+          n_steps = 10,
+          F_type = c("integrated", "averaged") ){
 
   #
   integration_method = match.arg(integration_method)
+  F_type = match.arg(F_type)
   
   # Return
   structure( list(
@@ -335,7 +342,8 @@ function( nlminb_loops = 1,
     tmb_par = tmb_par,
     getJointPrecision = getJointPrecision,
     integration_method = integration_method,
-    n_steps = n_steps
+    n_steps = n_steps,
+    F_type = F_type
   ), class = "ecostate_control" )
 }
 

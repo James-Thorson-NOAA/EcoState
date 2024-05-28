@@ -63,7 +63,11 @@ function( p ) {
 
     # Record variables
     Bhat_ti[t,] = proj$y[nrow(proj$y),seq_len(n_species)]
-    Chat_ti[t,] = proj$y[nrow(proj$y),n_species+seq_len(n_species)]
+    if( F_type=="integrated" ){
+      Chat_ti[t,] = proj$y[nrow(proj$y),n_species+seq_len(n_species)]
+    }else{
+      Chat_ti[t,] = Bhatmean_ti[t,] * (1 - exp( -1 * exp(p$logF_ti[t,]) ))
+    }
     M2_ti[t,] = (DC_ij %*% (Bhatmean_ti[t,] * exp(logQB_i))) / Bhatmean_ti[t,]
 
     # Record more using midpoint biomass Bhatmean_ti

@@ -17,7 +17,8 @@ ecostate_control(
   tmb_par = NULL,
   getJointPrecision = FALSE,
   integration_method = c("ABM", "RK4", "ode23", "rk4", "lsoda"),
-  n_steps = 10
+  n_steps = 10,
+  F_type = c("integrated", "averaged")
 )
 }
 \arguments{
@@ -55,6 +56,10 @@ version of adaptive Runge-Kutta-23,
 where all are adapted from \code{pracma} functions.
 \code{"rk4"} and \code{lsoda} use those methods
 from \code{deSolve::ode} as implemented by \code{RTMBode::ode}}
+
+\item{F_type}{whether to integrate catches along with biomass (\code{"integrated"})
+or calculate catches from the Baranov catch equation applied to average 
+biomass (\code{"averaged"})}
 }
 \description{
 Define a list of control parameters.
