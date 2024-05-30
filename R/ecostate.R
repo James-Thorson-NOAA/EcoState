@@ -258,7 +258,9 @@ function( taxa,
     logB_i = logB_i, 
     DC_ij = DC_ij, 
     logV_ij = logV_ij,
-    hessian.fixed = hessian.fixed
+    hessian.fixed = hessian.fixed,
+    taxa = taxa,
+    years = years
   )
   out = list(
     obj = obj,
@@ -347,6 +349,39 @@ function( nlminb_loops = 1,
   ), class = "ecostate_control" )
 }
 
+#' @title Print EcoSim parameters
+#'
+#' @description Prints parameters defining EcoSim dynamics
+#'
+#' @param x Output from \code{\link{ecostate}}
+#' @param silent whether to print to terminal
+#'
+#' @return
+#' invisibly returns table printed
+#'
+#' @export
+print_ecopars <-
+function( x,
+          silent = FALSE ){
+  
+  # Params
+  out1 = t(exp(sapply( x$internal[c('logPB_i','logQB_i','logB_i')], FUN=rbind )))
+  colnames(out1) = names(x$internal$logPB_i)
+  rownames(out1) = c("PB","QB","B")
+  out1['B',] = exp(x$internal$parhat$logB_i)
+  
+  # Diet
+  out2 = x$internal$DC_ij
+  
+  if(isFALSE(silent)){
+    cat("EcoSim parameters:\n")
+    print(out1)
+    cat("\nEcoSim diet matrix:\n")
+    print(out2)
+  }
+  return(invisible(list("parameters"=out1, "diet_matrix"=out2)))
+}
+
 #' @title Print fitted ecostate object
 #'
 #' @description Prints output from fitted ecostate model
@@ -363,9 +398,14 @@ function( nlminb_loops = 1,
 print.ecostate <-
 function( x,
           ... ){
-  cat("Fitted using ", x$internal$control$integration_method, " using ", x$internal$control$n_steps, " steps")
+  cat("Dynamics integrated using ", x$internal$control$integration_method, " with ", x$internal$control$n_steps, " time-steps")
   cat("\nRun time: " )
   print(x$run_time)
+  
+  # Print pars
+  print_ecopars( x )
+  
+  # Print parameters
   if( !is.null(x$sdrep) ){
     cat("\nEstimates: ")
     print(x$sdrep)
