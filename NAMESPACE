@@ -6,10 +6,12 @@ export(compute_nll)
 export(dBdt)
 export(ecostate)
 export(ecostate_control)
-export(print_ecopars)
+export(get_trophic_level)
 export(myode)
 export(ode23)
+export(print_ecopars)
 export(rk4sys)
+importFrom(corpcor,pseudoinverse)
 
 # Edited by hand
 import("RTMB")

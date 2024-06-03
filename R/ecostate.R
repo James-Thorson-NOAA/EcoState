@@ -30,6 +30,8 @@
 #' @param control Output from [ecostate_control()], used to define user
 #'        settings.
 #'
+#' @importFrom corpcor pseudoinverse
+#'
 #' @details
 #' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
 #' but additional taxa can be in \code{QB}, \code{PB}, \code{B}, and \code{DC} that
@@ -244,6 +246,11 @@ function( taxa,
     hessian.fixed = sdrep = NULL
   }
 
+  # 
+  TL_ti = t(apply( rep$Q_tij[-1,,], MARGIN=1, FUN=get_trophic_level ))
+  TL_ti = rbind( NA, TL_ti )
+  
+  #
   environment()
   on.exit( gc() )  # Seems necessary after environment()
   
@@ -260,7 +267,8 @@ function( taxa,
     logV_ij = logV_ij,
     hessian.fixed = hessian.fixed,
     taxa = taxa,
-    years = years
+    years = years,
+    TL_ti = TL_ti
   )
   out = list(
     obj = obj,

@@ -14,7 +14,8 @@ License: GPL-3
 Depends:
     R (>= 4.1.0),
 Imports:
-    RTMB
+    RTMB,
+    corpcor
 Suggests:
     ggplot2,
     RTMBode
