@@ -3,7 +3,7 @@
 #'
 #' @description Calculate trophic level from consumption matrix
 #'
-#' @param Q_ij Consumption of each prey i by predator j.
+#' @param Q_ij Consumption of each prey i by predator j in units biomass.
 #'
 #' @details
 #' Trophic level \eqn{l_i} for each predator \eqn{i} is defined as:
@@ -24,8 +24,8 @@ get_trophic_level = function( Q_ij ){
   Qprime_ij[,which_pp] = 0
   
   # Solve for trophic level
-  j_i = c(1,rep(1,nrow(Qprime_ij)-1))
+  ones_i = rep(1,nrow(Qprime_ij))
   pseudoinvIminusQ = pseudoinverse( diag(nrow(Qprime_ij)) - Qprime_ij )
-  l_i = j_i %*% pseudoinvIminusQ
+  l_i = ones_i %*% pseudoinvIminusQ
   return( l_i )
 }

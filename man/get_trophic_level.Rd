@@ -12,3 +12,12 @@ get_trophic_level(Q_ij)
 \description{
 Calculate trophic level from consumption matrix
 }
+\details{
+Trophic level \eqn{l_i} for each predator \eqn{i} is defined as:
+
+\deqn{ \mathbf{l - 1 = l Q^*} }
+
+where \eqn{\mathbf{Q*}} is the proportion consumption for each predator (column)
+of different prey (rows).  We identify primary producers as any taxa with no
+consumption (a column of 0s), and assign them as the first trophic level.
+}
