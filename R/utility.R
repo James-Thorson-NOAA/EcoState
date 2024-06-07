@@ -24,8 +24,7 @@ get_trophic_level = function( Q_ij ){
   Qprime_ij[,which_pp] = 0
   
   # Solve for trophic level
-  ones_i = rep(1,nrow(Qprime_ij))
   pseudoinvIminusQ = pseudoinverse( diag(nrow(Qprime_ij)) - Qprime_ij )
-  l_i = ones_i %*% pseudoinvIminusQ
+  l_i = rep(1,nrow(Qprime_ij)) %*% pseudoinvIminusQ
   return( l_i )
 }

@@ -13,9 +13,11 @@ ecostate(
   QB,
   B,
   DC,
+  EE,
   fit_B = vector(),
   fit_Q = vector(),
   fit_B0 = vector(),
+  fit_EE = vector(),
   fit_eps = vector(),
   control = ecostate_control()
 )
