@@ -465,6 +465,9 @@ function( x,
   cat("Dynamics integrated using ", x$internal$control$integration_method, " with ", x$internal$control$n_steps, " time-steps")
   cat("\nRun time: " )
   print(x$run_time)
+  cat("Negative log-likelihood: " )
+  cat( x$opt$objective )
+  cat("\n\n")
   
   # Print pars
   print_ecopars( x )
