@@ -11,7 +11,7 @@
 #' @param biomass long-form data frame with columns \code{Mass}, \code{Year}
 #'        and  \code{Taxa}, where \code{Mass} is assumed to have the same units
 #'        as \code{catch}
-#' @param PB numeric-vector with names matching \code{taxa}, providing the
+#' @param PB numeric-vector with names matching \code{taxa}, providing the                        
 #'        ratio of production to biomass for each taxon
 #' @param QB numeric-vector with names matching \code{taxa}, providing the
 #'        ratio of consumption to biomass for each taxon
@@ -197,6 +197,8 @@ function( taxa,
                   n_species = n_species
                   noB_i = noB_i
                   scale_solver = control$scale_solver
+                  inverse_method = control$inverse_method
+                  which_primary = which_primary
                   environment()
   })
   environment(compute_nll) <- data
@@ -296,10 +298,6 @@ function( taxa,
     hessian.fixed = sdrep = NULL
   }
 
-  # 
-  TL_ti = t(apply( rep$Q_tij[-1,,], MARGIN=1, FUN=get_trophic_level ))
-  TL_ti = rbind( NA, TL_ti )
-  
   #
   environment()
   on.exit( gc() )  # Seems necessary after environment()
@@ -317,8 +315,7 @@ function( taxa,
     logV_ij = logV_ij,
     hessian.fixed = hessian.fixed,
     taxa = taxa,
-    years = years,
-    TL_ti = TL_ti
+    years = years
   )
   out = list(
     obj = obj,
@@ -383,12 +380,14 @@ function( nlminb_loops = 1,
           integration_method = c( "ABM", "RK4", "ode23", "rk4", "lsoda" ),
           n_steps = 10,
           F_type = c("integrated", "averaged"),
-          scale_solver = c("simple","joint") ){
+          scale_solver = c("simple","joint"),
+          inverse_method = c("Penrose_moore", "Standard") ){
 
   #
   integration_method = match.arg(integration_method)
   F_type = match.arg(F_type)
   scale_solver = match.arg(scale_solver)
+  inverse_method = match.arg(inverse_method)
   
   # Return
   structure( list(
@@ -406,7 +405,8 @@ function( nlminb_loops = 1,
     integration_method = integration_method,
     n_steps = n_steps,
     F_type = F_type,
-    scale_solver = scale_solver
+    scale_solver = scale_solver,
+    inverse_method = inverse_method
   ), class = "ecostate_control" )
 }
 

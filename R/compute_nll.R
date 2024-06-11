@@ -27,7 +27,7 @@ function( p ) {
               what = "stuff" )
   
   # Objects to save
-  dBdt0_ti = deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
+  TL_ti = dBdt0_ti = deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
   loglik1_ti = loglik2_ti = loglik3_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )  # Missing = 0
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   
@@ -51,7 +51,7 @@ function( p ) {
   }
   
   jnll = 0
-  
+
   # Loop through years
   for( t in 2:nrow(Bhat_ti) ){
     # Assemble inputs
@@ -95,6 +95,9 @@ function( p ) {
     M_ti[t,] = out$M_i
     Q_tij[t,,] = out$Q_ij
     dBdt0_ti[t,] = out$dBdt0_i
+    TL_ti[t,] = get_trophic_level( out$Q_ij, 
+                                   inverse_method = inverse_method,
+                                   which_primary = which_primary )
     # Must calculate during loop because G_ti is NA for t=1
     P_ti[t,] = G_ti[t,] / Bhat_ti[t,]
     deltaBB_ti[t,] = p$deltaB_ti[t,]
@@ -140,6 +143,8 @@ function( p ) {
   REPORT( loglik2_ti )
   REPORT( loglik3_ti )
   REPORT( jnll )
+  REPORT( TL_ti )
+
   ADREPORT( Bhat_ti )
   ADREPORT( Chat_ti )
   ADREPORT( Bexp_ti )
@@ -150,6 +155,9 @@ function( p ) {
   ADREPORT( P_ti )
   ADREPORT( deltaBB_ti )
   ADREPORT( dBdt0_ti )
+  if( inverse_method=="Standard" ){
+    ADREPORT( TL_ti )
+  }
   
   return(jnll)
 }
