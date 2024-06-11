@@ -2,6 +2,7 @@
 
 S3method(print,ecostate)
 export(abm3pc_sys)
+export(add_equilibrium)
 export(compute_nll)
 export(dBdt)
 export(ecostate)

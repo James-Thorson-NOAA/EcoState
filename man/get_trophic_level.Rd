@@ -7,7 +7,7 @@
 get_trophic_level(Q_ij)
 }
 \arguments{
-\item{Q_ij}{Consumption of each prey i by predator j.}
+\item{Q_ij}{Consumption of each prey i by predator j in units biomass.}
 }
 \description{
 Calculate trophic level from consumption matrix

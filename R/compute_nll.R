@@ -13,12 +13,26 @@
 compute_nll <-
 function( p ) { 
   
+  p = add_equilibrium( p,
+                       scale_solver = scale_solver,
+                       noB_i = noB_i )
+  
+  # unfished M0 and M2, and B_i solved for EE_i
+  p_t = p
+    p_t$deltaB_i = rep(0,n_species)
+    p_t$logF_i = rep(-Inf,n_species)
+  out_initial = dBdt( Time = 1, 
+              State = c(p$logB_i,rep(0,n_species)), 
+              Pars = p_t,
+              what = "stuff" )
+  
   # Objects to save
-  dBdt0_ti = deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
+  TL_ti = dBdt0_ti = deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
+  loglik1_ti = loglik2_ti = loglik3_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )  # Missing = 0
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   
   # Initial condition
-  Bhat_ti[1,] = exp(p$logB_i + p$logB0ratio_i)
+  Bhat_ti[1,] = out_initial$B_i * exp(p$logB0ratio_i)
   
   if( FALSE ){
     t = 2
@@ -36,6 +50,8 @@ function( p ) {
           y0 = y0 )
   }
   
+  jnll = 0
+
   # Loop through years
   for( t in 2:nrow(Bhat_ti) ){
     # Assemble inputs
@@ -79,6 +95,9 @@ function( p ) {
     M_ti[t,] = out$M_i
     Q_tij[t,,] = out$Q_ij
     dBdt0_ti[t,] = out$dBdt0_i
+    TL_ti[t,] = get_trophic_level( out$Q_ij, 
+                                   inverse_method = inverse_method,
+                                   which_primary = which_primary )
     # Must calculate during loop because G_ti is NA for t=1
     P_ti[t,] = G_ti[t,] / Bhat_ti[t,]
     deltaBB_ti[t,] = p$deltaB_ti[t,]
@@ -88,27 +107,29 @@ function( p ) {
   
   # likelihood
   Bexp_ti = Bhat_ti * (rep(1,nrow(Bhat_ti)) %*% t(exp(p$logq_i)))
-  jnll = 0
   for( i in seq_len(n_species) ){
-    jnll = jnll - sum( dnorm( log(Bobs_ti[,i]), log(Bexp_ti[,i]), exp(p$ln_sdB), log=TRUE), na.rm=TRUE )
-    if( !is.na(p$logtau_i[i]) ){
-      jnll = jnll - sum( dnorm(p$deltaB_ti[,i], 0, exp(p$logtau_i[i]), log=TRUE) )
+  for( t in seq_len(nrow(Bexp_ti)) ){
+    if( !is.na(Bobs_ti[t,i]) ){
+      loglik1_ti[t,i] = dnorm( log(Bobs_ti[t,i]), log(Bexp_ti[t,i]), exp(p$ln_sdB), log=TRUE)
     }
-    jnll = jnll - sum( dnorm(log(Cobs_ti[,i]), log(Chat_ti[,i]), exp(p$ln_sdC), log=TRUE), na.rm=TRUE )
-  }
-  
-  # unfished M0 and M2
-  out = dBdt( Time = 1, 
-        State = c(p$logB_i,rep(0,n_species)), 
-        Pars = p_t,
-        what = "stuff" )
+    if( !is.na(p$logtau_i[i]) ){
+      loglik2_ti[t,i] = dnorm( p$deltaB_ti[t,i], 0, exp(p$logtau_i[i]), log=TRUE)
+    }
+    if( !is.na(Cobs_ti[t,i]) ){
+      loglik3_ti[t,i] = dnorm( log(Cobs_ti[t,i]), log(Chat_ti[t,i]), exp(p$ln_sdC), log=TRUE)
+    }
+  }}
+  # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
+  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) ) 
+  #jnll = jnll - ( loglik1_ti[2,1] ) 
+  #jnll = Bexp_ti[2,1]
   
   # Reporting
   REPORT( Bhat_ti )
   REPORT( Chat_ti )
   REPORT( M2_ti )
   REPORT( Bhatmean_ti )
-  REPORT( out )
+  REPORT( out_initial )
   REPORT( Bexp_ti )
   REPORT( G_ti )
   REPORT( M_ti )
@@ -117,7 +138,13 @@ function( p ) {
   REPORT( P_ti )
   REPORT( deltaBB_ti )
   REPORT( Q_tij )
-  REPORT( dBdt0_ti );
+  REPORT( dBdt0_ti )
+  REPORT( loglik1_ti )
+  REPORT( loglik2_ti )
+  REPORT( loglik3_ti )
+  REPORT( jnll )
+  REPORT( TL_ti )
+
   ADREPORT( Bhat_ti )
   ADREPORT( Chat_ti )
   ADREPORT( Bexp_ti )
@@ -128,6 +155,9 @@ function( p ) {
   ADREPORT( P_ti )
   ADREPORT( deltaBB_ti )
   ADREPORT( dBdt0_ti )
+  if( inverse_method=="Standard" ){
+    ADREPORT( TL_ti )
+  }
   
   return(jnll)
 }
