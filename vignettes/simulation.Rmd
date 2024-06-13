@@ -74,27 +74,39 @@ n_steps = 10
 project_vars = abm3pc_sys
 
 # Project forward
-Bobs_ti = Cobs_ti = B_ti = C_ti = matrix(NA, nrow=n_years, ncol=n_taxa )
+Bobs_ti = Cobs_ti = B_ti = C_ti = array(NA, dim=c(n_years,n_taxa), dimnames=list("Year"=years,"Taxon"=taxa) )
 B_ti[1,] = B0_i
 C_ti[1,] = NA
 for( t in seq_along(years)[-1] ){
   # Fishing mortality ramps up for two predators
   F_t = c( 0, 0, t/n_years*0.2, 0, t/n_years*0.1 )
 
+  # Define parameters
+  pars = list( logB_i = log(B0_i),
+               logPB_i = log(PB_i),
+               logQB_i = log(QB_i),
+               logV_ij = log(V_ij),
+               EE_i = rep(NA,n_taxa),
+               DC_ij = DC_ij,
+               noB_i = rep(0,n_taxa),
+               deltaB_i = deltaB_ti[t,],
+               logF_i = log(F_t),
+               which_primary = which(colSums(DC_ij)==0),
+               F_type = "integrated",
+               n_species = n_taxa )
+  
+  # Solve for equilibrium values
+  pars_full = add_equilibrium( pars,
+                               scale_solver = "simple",
+                               noB_i = ifelse(is.na(pars$logB_i),1,0) )
+    
   # Integrate dynamics annually
   sim = project_vars(
         f = dBdt,
         a = years[t-1], 
         b = years[t],
         n = n_steps,
-        Pars = list( logB_i = log(B0_i),
-                     logPB_i = log(PB_i),
-                     logQB_i = log(QB_i),
-                     logV_ij = log(V_ij),
-                     DC_ij = DC_ij,
-                     deltaB_i = deltaB_ti[t,],
-                     logF_i = log(F_t),
-                     n_species = n_taxa ),
+        Pars = pars_full,
         y0 = c( B_ti[t-1,], rep(0,n_taxa) ) )
   
   # Record results
@@ -110,10 +122,6 @@ for( t in seq_along(years)[-1] ){
 Next, we reformat simulated biomass and catch time-series into long-form data frames and fit them with `ecostate`
 
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
-# Add dimension names
-dimnames(Bobs_ti) = dimnames(Cobs_ti) = list( "Year" = years,
-                                              "Taxon" = taxa ) 
-
 # reformat to longform data-frame
 Catch = na.omit(data.frame(expand.grid(dimnames(Cobs_ti)), "Mass"=as.vector(Cobs_ti)))
 Biomass = na.omit(data.frame(expand.grid(dimnames(Bobs_ti)), "Mass"=as.vector(Bobs_ti)))
@@ -124,8 +132,11 @@ fit_Q = taxa       # catchability coefficient
 fit_B0 = taxa      # non-equilibrium initial condition
 fit_B = c()       # equilibrium biomass
 
+# Solving for EE but passing vector of NAs as placeholder
+EE_i = rep(NA, n_taxa)
+
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
-names(PB_i) = names(QB_i) = names(B0_i) = taxa
+names(PB_i) = names(QB_i) = names(B0_i) = names(EE_i) = taxa
   dimnames(DC_ij) = list("Prey"=taxa, "Predator"=taxa)
 
 # Run model
@@ -137,11 +148,13 @@ out = ecostate( taxa = taxa,
                 QB = QB_i,
                 DC = DC_ij,
                 B = B0_i,
+                EE = EE_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
-                control = ecostate_control( trace=0 ) )
+                control = ecostate_control( inverse_method = "Standard" ), # Avoids using Penrose-Moore inverse, which isn't working in RTMB
+                                            trace = 0 )
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:
