@@ -153,7 +153,7 @@ out = ecostate( taxa = taxa,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
-                control = ecostate_control( inverse_method = "Standard" ), # Avoids using Penrose-Moore inverse, which isn't working in RTMB
+                control = ecostate_control( inverse_method = "Standard", # Avoids using Penrose-Moore inverse, which isn't working in RTMB
                                             trace = 0 )
 ```
 
