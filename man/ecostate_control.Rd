@@ -18,7 +18,10 @@ ecostate_control(
   getJointPrecision = FALSE,
   integration_method = c("ABM", "RK4", "ode23", "rk4", "lsoda"),
   n_steps = 10,
-  F_type = c("integrated", "averaged")
+  F_type = c("integrated", "averaged"),
+  scale_solver = c("simple", "joint"),
+  inverse_method = c("Penrose_moore", "Standard"),
+  tmbad.sparse_hessian_compress = 0
 )
 }
 \arguments{
@@ -60,6 +63,15 @@ from \code{deSolve::ode} as implemented by \code{RTMBode::ode}}
 \item{F_type}{whether to integrate catches along with biomass (\code{"integrated"})
 or calculate catches from the Baranov catch equation applied to average 
 biomass (\code{"averaged"})}
+
+\item{tmbad.sparse_hessian_compress}{passed to [TMB::config()], and enabling 
+an experimental feature to save memory when first computing the inner
+Hessian matrix.  Using \code{tmbad.sparse_hessian_compress=1} seems
+to have no effect on the MLE (although users should probably confirm this), 
+and hugely reduces memory use in both small
+and large models. Using \code{tmbad.sparse_hessian_compress=1} seems
+to hugely speed up the model-fitting with a large model but results in a small
+decrease in speed for model-fitting with a small model.}
 }
 \description{
 Define a list of control parameters.

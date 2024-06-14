@@ -31,6 +31,7 @@
 #'        settings.
 #'
 #' @importFrom corpcor pseudoinverse
+#' @importFrom TMB config
 #'
 #' @details
 #' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
@@ -63,6 +64,9 @@ function( taxa,
   }
   if( any(biomass$Mass==0) ) stop("`biomass$Mass` cannot include zeros, given the assumed lognormal distribution")
   if( any(catch$Mass==0) ) stop("`catch$Mass` cannot include zeros, given the assumed lognormal distribution")
+
+  # Set tmbad.sparse_hessian_compress
+  config( tmbad.sparse_hessian_compress = control$tmbad.sparse_hessian_compress, DLL="RTMB" )
 
   # 
   n_species = length(taxa)
@@ -363,6 +367,14 @@ function( taxa,
 #' @param F_type whether to integrate catches along with biomass (\code{"integrated"})
 #'        or calculate catches from the Baranov catch equation applied to average 
 #'        biomass (\code{"averaged"})
+#' @param tmbad.sparse_hessian_compress passed to [TMB::config()], and enabling 
+#'        an experimental feature to save memory when first computing the inner
+#'        Hessian matrix.  Using \code{tmbad.sparse_hessian_compress=1} seems
+#'        to have no effect on the MLE (although users should probably confirm this), 
+#'        and hugely reduces memory use in both small
+#'        and large models. Using \code{tmbad.sparse_hessian_compress=1} seems
+#'        to hugely speed up the model-fitting with a large model but results in a small
+#'        decrease in speed for model-fitting with a small model. 
 #'
 #' @export
 ecostate_control <-
@@ -381,7 +393,8 @@ function( nlminb_loops = 1,
           n_steps = 10,
           F_type = c("integrated", "averaged"),
           scale_solver = c("simple","joint"),
-          inverse_method = c("Penrose_moore", "Standard") ){
+          inverse_method = c("Penrose_moore", "Standard"),
+          tmbad.sparse_hessian_compress = 0 ){
 
   #
   integration_method = match.arg(integration_method)
@@ -406,7 +419,8 @@ function( nlminb_loops = 1,
     n_steps = n_steps,
     F_type = F_type,
     scale_solver = scale_solver,
-    inverse_method = inverse_method
+    inverse_method = inverse_method,
+    tmbad.sparse_hessian_compress = tmbad.sparse_hessian_compress
   ), class = "ecostate_control" )
 }
 

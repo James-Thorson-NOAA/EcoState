@@ -12,6 +12,7 @@ export(myode)
 export(ode23)
 export(print_ecopars)
 export(rk4sys)
+importFrom(TMB,config)
 importFrom(corpcor,pseudoinverse)
 
 # Edited by hand

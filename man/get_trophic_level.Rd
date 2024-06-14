@@ -4,10 +4,16 @@
 \alias{get_trophic_level}
 \title{Calculate trophic level}
 \usage{
-get_trophic_level(Q_ij)
+get_trophic_level(
+  Q_ij,
+  inverse_method = c("Penrose_moore", "Standard"),
+  which_primary = which(colSums(Q_ij) == 0)
+)
 }
 \arguments{
 \item{Q_ij}{Consumption of each prey i by predator j in units biomass.}
+
+\item{inverse_method}{whether to use pseudoinverse or standard inverse}
 }
 \description{
 Calculate trophic level from consumption matrix
