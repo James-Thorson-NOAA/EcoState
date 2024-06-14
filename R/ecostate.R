@@ -32,6 +32,7 @@
 #'
 #' @importFrom corpcor pseudoinverse
 #' @importFrom TMB config
+#' @importFrom rlist list.cbind
 #'
 #' @details
 #' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
@@ -77,14 +78,19 @@ function( taxa,
   if(!all(taxa %in% names(B))) stop("Check names for `B`")
   if(!all(taxa %in% names(EE))) stop("Check names for `EE`")
   if(!all(taxa %in% rownames(DC)) | !all(taxa %in% colnames(DC))) stop("Check dimnames for `DC`")
-  logPB_i = log(PB[taxa])
+  if( is.list(PB) ){
+    if(length(PB[taxa[1]])==1) PB[[taxa[1]]] = rep(PB[[taxa[1]]], length(years))
+    logPB_ti = log(list.cbind(PB[taxa]))
+  }else{
+    logPB_ti = outer(rep(1,length(years)), log(PB[taxa]))
+  }
   logQB_i = log(QB[taxa])
   logB_i = log(B[taxa])
   DC_ij = DC[taxa,taxa]
   EE_i = EE[taxa]
   #noB_i = rep(0,n_species)
   logV_ij = matrix( log(2), nrow=n_species, ncol=n_species )
-  if(any(is.na(c(logPB_i,logQB_i,DC_ij)))){
+  if(any(is.na(c(logPB_ti,logQB_i,DC_ij)))){
     stop("Check `PB` `QB` and `DC` for NAs or `taxa` that are not provided")
   }
   
@@ -119,7 +125,7 @@ function( taxa,
             ln_sdC = log(0.1),
             logB_i = logB_i,
             EE_i = EE_i,
-            logPB_i = logPB_i,
+            logPB_ti = logPB_ti,
             logQB_i = logQB_i,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
@@ -131,7 +137,7 @@ function( taxa,
   map = list()
   
   # 
-  map$logPB_i = factor( rep(NA,n_species) )
+  map$logPB_ti = factor( array(NA,dim=dim(p$logPB_ti)) )
   map$logQB_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
   
@@ -312,7 +318,7 @@ function( taxa,
     control = control,
     Bobs_ti = Bobs_ti,
     Cobs_ti = Cobs_ti,
-    logPB_i = logPB_i, 
+    logPB_ti = logPB_ti, 
     logQB_i = logQB_i, 
     logB_i = logB_i, 
     DC_ij = DC_ij, 
@@ -442,11 +448,11 @@ function( x,
   # Params
   out1 = rbind( 
     "QB" = exp(x$internal$parhat[['logQB_i']]),
-    "PB" = exp(x$internal$parhat[['logPB_i']]),
+    "average_PB" = colMeans(exp(x$internal$parhat[['logPB_ti']])),
     "B" = x$rep$out_initial$B_i,
     "EE" = x$rep$out_initial$EE_i
   )
-  colnames(out1) = names(x$internal$logPB_i)
+  colnames(out1) = names(x$internal$logQB_i)
   
   # Diet
   out2 = x$internal$DC_ij

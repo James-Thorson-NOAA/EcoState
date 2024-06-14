@@ -14,6 +14,7 @@ export(print_ecopars)
 export(rk4sys)
 importFrom(TMB,config)
 importFrom(corpcor,pseudoinverse)
+importFrom(rlist,list.cbind)
 
 # Edited by hand
 import("RTMB")

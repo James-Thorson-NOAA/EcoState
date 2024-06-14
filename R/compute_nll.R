@@ -13,6 +13,10 @@
 compute_nll <-
 function( p ) { 
   
+  # Add average for time-varying rates ... (colMeans does not work but colSums does for some reason)
+  #browser()
+  p$logPB_i = log(colSums(exp(p$logPB_ti)) / nrow(p$logPB_ti))
+  # ... and then calculate equilbrium from the average rates
   p = add_equilibrium( p,
                        scale_solver = scale_solver,
                        noB_i = noB_i )
@@ -58,7 +62,8 @@ function( p ) {
     p_t = p
     p_t$deltaB_i = p$deltaB_ti[t,]
     p_t$logF_i = p$logF_ti[t,]
-
+    p_t$logPB_i = p$logPB_ti[t,]
+    
     # RTMBode::ode requires y0 have names
     y0 = c(Bhat_ti[t-1,], rep(0,n_species))
     names(y0) = paste0("var_",seq_along(y0))

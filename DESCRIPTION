@@ -16,7 +16,8 @@ Depends:
 Imports:
     RTMB,
     TMB,
-    corpcor
+    corpcor,
+    rlist
 Suggests:
     ggplot2,
     RTMBode
