@@ -16,8 +16,11 @@ Depends:
 Imports:
     RTMB (>= 1.5.0),
     TMB,
-    corpcor
-Suggests:
+    corpcor,
+    checkmate,
     ggplot2,
+    ggnetwork,
+    intergraph
+Suggests:
     RTMBode
 RoxygenNote: 7.3.1

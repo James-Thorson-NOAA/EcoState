@@ -19,9 +19,9 @@ ecostate_control(
   integration_method = c("ABM", "RK4", "ode23", "rk4", "lsoda"),
   n_steps = 10,
   F_type = c("integrated", "averaged"),
-  scale_solver = c("simple", "joint"),
-  inverse_method = c("Penrose_moore", "Standard"),
-  tmbad.sparse_hessian_compress = 0
+  scale_solver = c("joint", "simple"),
+  inverse_method = c("Standard", "Penrose_moore"),
+  tmbad.sparse_hessian_compress = 1
 )
 }
 \arguments{

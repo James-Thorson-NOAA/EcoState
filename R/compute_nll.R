@@ -95,9 +95,11 @@ function( p ) {
     M_ti[t,] = out$M_i
     Q_tij[t,,] = out$Q_ij
     dBdt0_ti[t,] = out$dBdt0_i
-    TL_ti[t,] = get_trophic_level( out$Q_ij, 
-                                   inverse_method = inverse_method,
-                                   which_primary = which_primary )
+    # Compute trophic level
+    TL_ti[t,] = compute_tracer( out$Q_ij, 
+                                inverse_method = inverse_method,
+                                which_primary = which_primary,
+                                tracer_i = rep(1,n_species) )
     # Must calculate during loop because G_ti is NA for t=1
     P_ti[t,] = G_ti[t,] / Bhat_ti[t,]
     deltaBB_ti[t,] = p$deltaB_ti[t,]

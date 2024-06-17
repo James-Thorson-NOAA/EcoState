@@ -30,8 +30,8 @@
 #' @param control Output from [ecostate_control()], used to define user
 #'        settings.
 #'
-#' @importFrom corpcor pseudoinverse
 #' @importFrom TMB config
+#' @importFrom checkmate assertDouble
 #'
 #' @details
 #' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
@@ -137,7 +137,7 @@ function( taxa,
   
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
-  p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01), NA)
+  p$logtau_i = ifelse(taxa %in% fit_eps, log(0.001), NA)
   
   # Catches
   map$logF_ti = factor( ifelse(is.na(Cobs_ti), NA, seq_len(prod(dim(Cobs_ti)))) )
