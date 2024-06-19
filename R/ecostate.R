@@ -114,7 +114,7 @@ function( taxa,
                   )
   
   # parameter list
-  p = list( logB0ratio_i = rep(log(1), n_species),
+  p = list( delta_i = rep(log(1), n_species),
             ln_sdB = log(0.1), 
             ln_sdC = log(0.1),
             logB_i = logB_i,
@@ -123,7 +123,7 @@ function( taxa,
             logQB_i = logQB_i,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
-            deltaB_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) ),
+            epsilon_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
             logq_i = rep( log(1), n_species) )      # , PB_i=PB_i
 
@@ -147,20 +147,20 @@ function( taxa,
   map$logq_i = factor( ifelse(taxa %in% fit_Q, seq_len(n_species), NA) )
   
   # Initial biomass-ratio ... turn off if no early biomass observations
-  map$logB0ratio_i = factor( ifelse(taxa %in% fit_B0, seq_along(p$logB0ratio_i), NA) )
+  map$delta_i = factor( ifelse(taxa %in% fit_B0, seq_along(p$delta_i), NA) )
   
   # process errors
   map$logtau_i = seq_len(n_species)
-  map$deltaB_ti = array( seq_len(prod(dim(p$deltaB_ti))), dim=dim(p$deltaB_ti))
+  map$epsilon_ti = array( seq_len(prod(dim(p$epsilon_ti))), dim=dim(p$epsilon_ti))
   for(i in 1:n_species){
     if( is.na(p$logtau_i[i]) ){
       map$logtau_i[i] = NA
-      map$deltaB_ti[,i] = NA
-      p$deltaB_ti[,i] = 0
+      map$epsilon_ti[,i] = NA
+      p$epsilon_ti[,i] = 0
     }
   }
   map$logtau_i = factor(map$logtau_i)
-  map$deltaB_ti = factor(map$deltaB_ti)
+  map$epsilon_ti = factor(map$epsilon_ti)
   
   # Measurement errors
   p$ln_sdB = log(0.1)
@@ -172,7 +172,7 @@ function( taxa,
   if( !is.null(control$tmb_par) ){
     # Check shape but not numeric values, and give informative error
     attr(p,"check.passed") = attr(control$tmb_par,"check.passed")
-    if( isTRUE(all.equal(control$tmb_par, p, tolerance=Inf)) ){
+    if( isTRUE(all.equal(control$tmb_par, p, tolerance=Inf, check.class=FALSE, check.attributes=FALSE)) ){
       p = control$tmb_par
     }else{
       stop("Not using `control$tmb_par` because it has some difference from `p` built internally")
@@ -222,49 +222,15 @@ function( taxa,
   })
   environment(dBdt) <- data2
   
-  # Load method into function `myode`
-  #data3 = local({ 
-  #                method = control$integration_method
-  #                environment() 
-  #})
-  #environment(myode) = data3
-
-  # Load method into function `myode`
-  #data4 = local({ 
-  #                noB_i = noB_i
-  #                scale_solver = control$scale_solver
-  #                environment() 
-  #})
-  #environment(add_equilibrium) = data4
-
-  if( FALSE ){
-    compute_nll(p)
-  }
-
   # Make TMB object
   #browser()
   # environment(compute_nll) <- data
   obj <- MakeADFun( func = compute_nll, 
                     parameters = p,
                     map = map,
-                    random = c("deltaB_ti"),
+                    random = c("epsilon_ti"),
                     profile = control$profile,
                     silent = control$silent )
-  
-  if( FALSE ){
-    project_vars = abm3pc_sys
-    n_steps = 10
-    F_type = control$F_type
-    par = obj$par; #par[2] = par[2] + 1
-    #obj$fn(par); # obj$gr(par)
-    rep = obj$report(par)
-    rep$out_initial$B_i
-    rep$jnll
-    colMeans(rep$Bhat_ti,na.rm=TRUE)
-    sum(rep$loglik1_ti,na.rm=TRUE)
-    sum(rep$loglik2_ti,na.rm=TRUE)
-    sum(rep$loglik3_ti,na.rm=TRUE)
-  }
   
   # Optimize
   opt = list( "par"=obj$par )

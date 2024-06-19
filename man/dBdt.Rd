@@ -15,6 +15,18 @@ dBdt(Time, State, Pars, what = "dBdt")
 
 \item{what}{todo}
 }
+\value{
+An object (list) of ranges. Elements include:
+\describe{
+\item{G_i}{Biomass growth per time}
+\item{g_i}{Biomass growth per time per biomass}
+\item{M2_i}{Consumptive mortality per time}
+\item{m2_i}{Consumptive mortality per time per biomass}
+\item{M_i}{Natural mortality per time}
+\item{m_i}{Natural mortality per time per biomass (i.e., m2_i + m0_i)}
+\item{Q_ij}{Consumption per time for prey (rows) by predator (columns)}
+}
+}
 \description{
 Compute system of differential equations representing EcoSim dynamics
 }

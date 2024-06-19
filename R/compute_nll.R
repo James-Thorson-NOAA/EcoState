@@ -19,7 +19,7 @@ function( p ) {
   
   # unfished M0 and M2, and B_i solved for EE_i
   p_t = p
-    p_t$deltaB_i = rep(0,n_species)
+    p_t$epsilon_i = rep(0,n_species)
     p_t$logF_i = rep(-Inf,n_species)
   out_initial = dBdt( Time = 1, 
               State = c(p$logB_i,rep(0,n_species)), 
@@ -27,36 +27,19 @@ function( p ) {
               what = "stuff" )
   
   # Objects to save
-  TL_ti = dBdt0_ti = deltaBB_ti = P_ti = M_ti = G_ti = M2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
+  TL_ti = dBdt0_ti = M_ti = m_ti = G_ti = g_ti = M2_ti = m2_ti = Bhatmean_ti = Chat_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
   loglik1_ti = loglik2_ti = loglik3_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )  # Missing = 0
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   
   # Initial condition
-  Bhat_ti[1,] = out_initial$B_i * exp(p$logB0ratio_i)
-  
-  if( FALSE ){
-    t = 2
-    p_t = p
-    p_t$deltaB_i = p$deltaB_ti[t,]
-    p_t$logF_i = p$logF_ti[t,]
-    n_steps = 10
-    y0 = c(Bhat_ti[t-1,], rep(0,n_species))
-    proj = myode(
-          f = dBdt,
-          a = 0, 
-          b = 1,
-          n = n_steps,
-          Pars = p_t,
-          y0 = y0 )
-  }
-  
+  Bhat_ti[1,] = out_initial$B_i * exp(p$delta_i)
   jnll = 0
 
   # Loop through years
   for( t in 2:nrow(Bhat_ti) ){
     # Assemble inputs
     p_t = p
-    p_t$deltaB_i = p$deltaB_ti[t,]
+    p_t$epsilon_i = p$epsilon_ti[t,]
     p_t$logF_i = p$logF_ti[t,]
 
     # RTMBode::ode requires y0 have names
@@ -91,8 +74,13 @@ function( p ) {
                 State = c(Bhatmean_ti[t,], rep(0,n_species)),
                 Pars = p_t,
                 what = "stuff" )
+    # Must calculate during loop because G_ti is NA for t=1
     G_ti[t,] = out$G_i
+    g_ti[t,] = out$g_i
     M_ti[t,] = out$M_i
+    m_ti[t,] = out$m_i
+    M2_ti[t,] = out$M2_i
+    m2_ti[t,] = out$m2_i
     Q_tij[t,,] = out$Q_ij
     dBdt0_ti[t,] = out$dBdt0_i
     # Compute trophic level
@@ -100,9 +88,6 @@ function( p ) {
                                 inverse_method = inverse_method,
                                 which_primary = which_primary,
                                 tracer_i = rep(1,n_species) )
-    # Must calculate during loop because G_ti is NA for t=1
-    P_ti[t,] = G_ti[t,] / Bhat_ti[t,]
-    deltaBB_ti[t,] = p$deltaB_ti[t,]
   }
   F_ti = exp(p$logF_ti)
   Z_ti = F_ti + M_ti 
@@ -115,7 +100,7 @@ function( p ) {
       loglik1_ti[t,i] = dnorm( log(Bobs_ti[t,i]), log(Bexp_ti[t,i]), exp(p$ln_sdB), log=TRUE)
     }
     if( !is.na(p$logtau_i[i]) ){
-      loglik2_ti[t,i] = dnorm( p$deltaB_ti[t,i], 0, exp(p$logtau_i[i]), log=TRUE)
+      loglik2_ti[t,i] = dnorm( p$epsilon_ti[t,i], 0, exp(p$logtau_i[i]), log=TRUE)
     }
     if( !is.na(Cobs_ti[t,i]) ){
       loglik3_ti[t,i] = dnorm( log(Cobs_ti[t,i]), log(Chat_ti[t,i]), exp(p$ln_sdC), log=TRUE)
@@ -123,22 +108,21 @@ function( p ) {
   }}
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
   jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) ) 
-  #jnll = jnll - ( loglik1_ti[2,1] ) 
-  #jnll = Bexp_ti[2,1]
   
   # Reporting
   REPORT( Bhat_ti )
   REPORT( Chat_ti )
-  REPORT( M2_ti )
   REPORT( Bhatmean_ti )
   REPORT( out_initial )
   REPORT( Bexp_ti )
   REPORT( G_ti )
+  REPORT( g_ti )
   REPORT( M_ti )
+  REPORT( m_ti )
+  REPORT( M2_ti )
+  REPORT( m2_ti )
   REPORT( F_ti )
   REPORT( Z_ti )
-  REPORT( P_ti )
-  REPORT( deltaBB_ti )
   REPORT( Q_tij )
   REPORT( dBdt0_ti )
   REPORT( loglik1_ti )
@@ -151,11 +135,11 @@ function( p ) {
   ADREPORT( Chat_ti )
   ADREPORT( Bexp_ti )
   ADREPORT( G_ti )
+  ADREPORT( g_ti )
   ADREPORT( M_ti )
+  ADREPORT( m_ti )
   ADREPORT( F_ti )
   ADREPORT( Z_ti )
-  ADREPORT( P_ti )
-  ADREPORT( deltaBB_ti )
   ADREPORT( dBdt0_ti )
   if( inverse_method=="Standard" ){
     ADREPORT( TL_ti )

@@ -73,13 +73,13 @@ function( ecoparams,
   # Growth efficiency, Lucy-2020 Eq. 2
   GE_i = PB_i / QB_i
   # Natural mortality
-  M0_i = PB_i * (1 - EE_i)
+  m0_i = PB_i * (1 - EE_i)
   
   #
   new_list = list(
     Qe_ij = Qe_ij,
     GE_i = GE_i,
-    M0_i = M0_i
+    m0_i = m0_i
   )
   ecoparams = c( ecoparams, new_list )
   ecoparams$logB_i = log(B_i)
