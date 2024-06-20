@@ -121,6 +121,7 @@ function( taxa,
             EE_i = EE_i,
             logPB_i = logPB_i,
             logQB_i = logQB_i,
+            logV_ij = logV_ij,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
             epsilon_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) ),
@@ -134,6 +135,7 @@ function( taxa,
   map$logPB_i = factor( rep(NA,n_species) )
   map$logQB_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
+  map$logV_ij = factor( array(NA,dim=dim(p$logV_ij)) )
   
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
@@ -167,21 +169,28 @@ function( taxa,
   map$ln_sdB = factor(NA)
   p$ln_sdC = log(0.1)
   map$ln_sdC = factor(NA)
+
+  # Fix biomass for primary producers .... seems to be stiff if trying to fix more than one variable
+  map$logB_i = factor( ifelse(taxa %in% fit_B, seq_len(n_species), NA) )
+  map$EE_i = factor( ifelse(taxa %in% fit_EE, seq_len(n_species), NA) )
   
   # User-supplied parameters
   if( !is.null(control$tmb_par) ){
     # Check shape but not numeric values, and give informative error
     attr(p,"check.passed") = attr(control$tmb_par,"check.passed")
     if( isTRUE(all.equal(control$tmb_par, p, tolerance=Inf, check.class=FALSE, check.attributes=FALSE)) ){
+      message("Using `control$tmb_par`, so be cautious in constructing it")
       p = control$tmb_par
     }else{
       stop("Not using `control$tmb_par` because it has some difference from `p` built internally")
     }
   }
-
-  # Fix biomass for primary producers .... seems to be stiff if trying to fix more than one variable
-  map$logB_i = factor( ifelse(taxa %in% fit_B, seq_len(n_species), NA) )
-  map$EE_i = factor( ifelse(taxa %in% fit_EE, seq_len(n_species), NA) )
+  
+  #
+  if( !is.null(control$map) ){
+    message("Using `control$map`, so be cautious in constructing it")
+    map = control$map
+  }
   
   # Load data in environment for function "compute_nll"
   data = local({
@@ -213,7 +222,7 @@ function( taxa,
                   #logQB_i = logQB_i
                   #logB_i = logB_i
                   #DC_ij = DC_ij
-                  logV_ij = logV_ij
+                  #logV_ij = logV_ij
                   which_primary = which_primary
                   #EE_i = EE_i
                   n_species = n_species
@@ -312,6 +321,7 @@ function( taxa,
 #' @param getsd Boolean indicating whether to call [TMB::sdreport()]
 #' @param tmb_par list of parameters for starting values, with shape identical
 #'   to `tinyVAST(...)$internal$parlist`
+#' @param map list of mapping values, passed to [RTMB::MakeADFun]
 #' @param eval.max Maximum number of evaluations of the objective function
 #'   allowed. Passed to `control` in [stats::nlminb()].
 #' @param iter.max Maximum number of iterations allowed. Passed to `control` in
@@ -354,6 +364,7 @@ function( nlminb_loops = 1,
           verbose = getOption("ecostate.verbose", FALSE),
           profile = c("logF_ti"),
           tmb_par = NULL,
+          map = NULL,
           getJointPrecision = FALSE,
           integration_method = c( "ABM", "RK4", "ode23", "rk4", "lsoda" ),
           n_steps = 10,
@@ -380,6 +391,7 @@ function( nlminb_loops = 1,
     verbose = verbose,
     profile = profile,
     tmb_par = tmb_par,
+    map = map,
     getJointPrecision = getJointPrecision,
     integration_method = integration_method,
     n_steps = n_steps,

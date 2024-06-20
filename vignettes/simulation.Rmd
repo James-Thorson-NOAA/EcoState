@@ -53,7 +53,7 @@ PB_i = c( 90, 5, 0.2, 3, 0.1 )
 # Ratio of consumption to biomass
 QB_i = c( 150, 10, 3, 15, 4 )
 # Functional response parameters
-V_ij = matrix( 2, nrow=n_taxa, ncol=n_taxa )
+V_ij = matrix( 1.5, nrow=n_taxa, ncol=n_taxa )
 # Equilibrium biomass
 B0_i = c(1, 1, 1, 1, 1)
 
@@ -66,6 +66,7 @@ We then loop through years while projecting dynamics, given that the two consume
 
 ```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
 # Simulate process errors
+set.seed(101)
 rarray = \(x,dims=dim(x),sd) array( sd*rnorm(prod(dims)), dim=dims )
 deltaB_ti = rarray(dims=c(n_years,n_taxa),sd=1) * outer(rep(1,n_years),sigmaB_i)
 
@@ -89,7 +90,7 @@ for( t in seq_along(years)[-1] ){
                EE_i = rep(NA,n_taxa),
                DC_ij = DC_ij,
                noB_i = rep(0,n_taxa),
-               deltaB_i = deltaB_ti[t,],
+               epsilon_i = deltaB_ti[t,],
                logF_i = log(F_t),
                which_primary = which(colSums(DC_ij)==0),
                F_type = "integrated",
@@ -154,7 +155,7 @@ out = ecostate( taxa = taxa,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
                 control = ecostate_control( inverse_method = "Standard", # Avoids using Penrose-Moore inverse, which isn't working in RTMB
-                                            trace = 0 ) )
+                                            trace = 1 ) )
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:
@@ -180,3 +181,50 @@ ggplot(results) +
   geom_ribbon( aes(x=as.numeric(Year), ymin=Est-SE, ymax=Est+SE), alpha=0.2)                
 ```
 
+We can also explore estimating additional parameters.  Here, we explore estimating vulnerability:
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Run model
+out0 = ecostate( taxa = taxa,
+                years = years,
+                catch = Catch,
+                biomass = Biomass,
+                PB = PB_i,
+                QB = QB_i,
+                DC = DC_ij,
+                B = B0_i,
+                EE = EE_i,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_delta,
+                fit_B0 = fit_B0,
+                control = ecostate_control( inverse_method = "Standard", # Avoids using Penrose-Moore inverse, which isn't working in RTMB
+                                            nlminb_loops = 0,
+                                            getsd = FALSE ) )
+
+# Change tmb_par
+tmb_par = out0$tmb_inputs$p
+  tmb_par$logV_ij[] = log(1.5)
+map = out0$tmb_inputs$map
+  map$logV_ij = factor( array(1,dim=dim(tmb_par$logV_ij)) )
+
+# Run model
+out1 = ecostate( taxa = taxa,
+                years = years,
+                catch = Catch,
+                biomass = Biomass,
+                PB = PB_i,
+                QB = QB_i,
+                DC = DC_ij,
+                B = B0_i,
+                EE = EE_i,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_delta,
+                fit_B0 = fit_B0,
+                control = ecostate_control( inverse_method = "Standard", # Avoids using Penrose-Moore inverse, which isn't working in RTMB
+                                            nlminb_loops = 1,
+                                            getsd = FALSE,
+                                            tmb_par = tmb_par,
+                                            map = map ) )
+```
