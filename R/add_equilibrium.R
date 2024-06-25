@@ -36,6 +36,7 @@ function( ecoparams,
   
     # Use Rpath logic ... see Rpath_logic.R
     #browser()
+    QB_i[which_primary] = 0
     BioQB = B_i * QB_i
     C_ij  = DC_ij * ( rep(1,length(B_i)) %*% t(BioQB) ) # BioQB[col(DC_ij)] # ( rep(1,n_species) %*% t(BioQB) ) # 
     b_i = rowSums(C_ij[,which(noB_i==0),drop=FALSE])    # NAs for missing B_i

@@ -36,30 +36,31 @@ years = 1981:2020
 n_years = length(years)
 
 # Name taxa (optional, for illustration)
-taxa = c("Producer", "Consumer1", "Predator1", "Consumer2", "Predator2")
+taxa = c("Producer_1", "Producer_2", "Consumer_1", "Consumer_2", "Predator_1", "Predator_2")
 n_taxa = length(taxa)
 
 # Ecopath-with-EcoSim parameters
 # Diet matrix
 DC_ij = matrix( c(
-  0, 1, 0, 0.5, 0,
-  0, 0, 1, 0.5, 0,
-  0, 0, 0, 0,   0.5,
-  0, 0, 0, 0,   0.5,
-  0, 0, 0, 0,   0
-), byrow=TRUE, ncol=length(taxa) )
-# Ratio of production to biomass:  Reciprocal of mean age according to Polovina-1984 ~= M
-PB_i = c( 90, 5, 0.2, 3, 0.1 )         
-# Ratio of consumption to biomass
-QB_i = c( 150, 10, 3, 15, 4 )
-# Functional response parameters
-V_ij = matrix( 1.5, nrow=n_taxa, ncol=n_taxa )
-# Equilibrium biomass
-B0_i = c(1, 1, 1, 1, 1)
+  0,    0,      0.8,   0.2,   0,    0,
+  0,    0,      0.2,   0.8,   0,    0,
+  0,    0,      0,     0,     0.6,  0.4,
+  0,    0,      0,     0,     0.4,  0.6,
+  0,    0,      0,     0,     0,    0,
+  0,    0,      0,     0,     0,    0
+), byrow=TRUE, ncol=n_taxa)
+which_primary = which(colSums(DC_ij)==0)
+PB_i = c( 90, 90, 4, 2, 0.2, 0.1 )         # Reciprocal of mean age according to Polovina-1984 ~= M
+QB_i = c( NA, NA, 10, 15, 3, 4 )
+#EE_i = rep(NA, n_taxa)
+EE_i = c( 0.9, 0.9, 0.9, 0.9, NA, NA )
+B0_i = c( NA, NA, NA, NA, 1, 1 )
+V_ij = matrix( 2, nrow=n_taxa, ncol=n_taxa )
+V_ij[,which_primary] = 91
 
 # Simulation parameters
-fished_i = c( FALSE, FALSE, TRUE, FALSE, TRUE )
-sigmaB_i = c(0.1, 0.1, 0.1, 0.1, 0.1)
+fished_i = c( FALSE, FALSE, FALSE, FALSE, TRUE, TRUE )
+sigmaB_i = c(0.1, 0.1, 0.02, 0.02, 0.1, 0.1) # Taxa 3-4 crashes solver if sigmaB > 0.02
 ```
 
 We then loop through years while projecting dynamics, given that the two consumers are subject to increased fishing over time:
@@ -68,39 +69,45 @@ We then loop through years while projecting dynamics, given that the two consume
 # Simulate process errors
 set.seed(101)
 rarray = \(x,dims=dim(x),sd) array( sd*rnorm(prod(dims)), dim=dims )
-deltaB_ti = rarray(dims=c(n_years,n_taxa),sd=1) * outer(rep(1,n_years),sigmaB_i)
+epsilon_ti = rarray(dims=c(n_years,n_taxa),sd=1) * outer(rep(1,n_years),sigmaB_i)
 
 # Choose method to integrate instantaneous rates for annual dynamics
 n_steps = 10
 project_vars = abm3pc_sys
 
+# Define parameters
+pars = list( logB_i = log(B0_i),
+             logPB_i = log(PB_i),
+             logQB_i = log(QB_i),
+             Vprime_ij = log(V_ij -1),
+             EE_i = EE_i,
+             DC_ij = DC_ij,
+             noB_i = ifelse(is.na(B0_i),1,0),
+             epsilon_i = deltaB_ti[t,],
+             logF_i = log(F_t),
+             which_primary = which(colSums(DC_ij)==0),
+             F_type = "integrated",
+             n_species = n_taxa )
+
+# Solve for equilibrium values
+pars_full = add_equilibrium( pars,
+                             scale_solver = "joint",
+                             noB_i = ifelse(is.na(pars$logB_i),1,0) )
+
 # Project forward
 Bobs_ti = Cobs_ti = B_ti = C_ti = array(NA, dim=c(n_years,n_taxa), dimnames=list("Year"=years,"Taxon"=taxa) )
-B_ti[1,] = B0_i
+B_ti[1,] = exp(pars_full$logB_i)
 C_ti[1,] = NA
+
 for( t in seq_along(years)[-1] ){
   # Fishing mortality ramps up for two predators
   F_t = c( 0, 0, t/n_years*0.2, 0, t/n_years*0.1 )
 
-  # Define parameters
-  pars = list( logB_i = log(B0_i),
-               logPB_i = log(PB_i),
-               logQB_i = log(QB_i),
-               logV_ij = log(V_ij),
-               EE_i = rep(NA,n_taxa),
-               DC_ij = DC_ij,
-               noB_i = rep(0,n_taxa),
-               epsilon_i = deltaB_ti[t,],
-               logF_i = log(F_t),
-               which_primary = which(colSums(DC_ij)==0),
-               F_type = "integrated",
-               n_species = n_taxa )
+  #
+  pars_t = pars_full
+  pars_t$logF_i = log(F_t)
+  pars_t$epsilon_i = epsilon_ti[t,]
   
-  # Solve for equilibrium values
-  pars_full = add_equilibrium( pars,
-                               scale_solver = "simple",
-                               noB_i = ifelse(is.na(pars$logB_i),1,0) )
-    
   # Integrate dynamics annually
   sim = project_vars(
         f = dBdt,
@@ -133,13 +140,14 @@ fit_Q = taxa       # catchability coefficient
 fit_B0 = taxa      # non-equilibrium initial condition
 fit_B = c()       # equilibrium biomass
 
-# Solving for EE but passing vector of NAs as placeholder
-EE_i = rep(NA, n_taxa)
+# Solving for EE and giving uninformed initial values for biomass
+fittedB_i = rep(1,n_taxa)
+fittedEE_i = rep(NA, n_taxa)
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
-names(PB_i) = names(QB_i) = names(B0_i) = names(EE_i) = taxa
-  dimnames(DC_ij) = list("Prey"=taxa, "Predator"=taxa)
-
+names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = taxa
+  dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
+  
 # Run model
 out = ecostate( taxa = taxa,
                 years = years,
@@ -148,14 +156,17 @@ out = ecostate( taxa = taxa,
                 PB = PB_i,
                 QB = QB_i,
                 DC = DC_ij,
-                B = B0_i,
-                EE = EE_i,
+                B = fittedB_i,
+                EE = fittedEE_i,
+                V = V_ij,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
-                control = ecostate_control( inverse_method = "Standard", # Avoids using Penrose-Moore inverse, which isn't working in RTMB
-                                            trace = 1 ) )
+                control = ecostate_control( inverse_method = "Standard", 
+                                            trace = 1,
+                                            nlminb_loops = 1,
+                                            getsd = FALSE ) )
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:

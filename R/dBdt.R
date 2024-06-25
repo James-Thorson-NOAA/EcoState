@@ -38,7 +38,7 @@ function( Time,
   # Inputs from local environment
   QB_i = exp(logQB_i)
   PB_i = exp(logPB_i)
-  V_ij = exp(logV_ij)
+  V_ij = exp(Vprime_ij) + 1
   B_i = exp(logB_i)
   # EE_i
   F_i = exp(logF_i)
@@ -48,18 +48,21 @@ function( Time,
   Ypred_j = Bt_i / B_i
   Ypred_ij = rep(1,n_species) %*% t(Ypred_j)
   Yprey_i = Bt_i / B_i
+  Yprey_ij = Yprey_i %*% t(rep(1,n_species))
   # Consumption = Equilibrium * Pred_functional_response * Prey_functional_response
-  Q_ij = Qe_ij * ( V_ij * Ypred_ij / ( V_ij - 1 + Ypred_ij ) ) * Yprey_i
+  #Q_ij = Qe_ij * ( V_ij * Ypred_ij / ( V_ij - 1 + Ypred_ij ) ) * Yprey_ij
+  Q_ij = Qe_ij * ( V_ij * Ypred_ij / ( V_ij - 1 + Ypred_ij ) ) * Yprey_ij
   # Calculate growth G_i (called C_i originally but conflicts with catch C_ti)
   G_i = GE_i * colSums(Q_ij)
   # Replace production for consumption for primary producers, including self-limitation via V_ij
-  G_i[which_primary] = PB_i[which_primary] * Bt_i[which_primary]
-  g_i = G_i / Bt_i
+  #G_i[which_primary] = PB_i[which_primary] * Bt_i[which_primary]
+  numerator = diag(V_ij[which_primary,which_primary]) * Yprey_i[which_primary]
+  denominator = ( diag(V_ij[which_primary,which_primary]) - 1 + Yprey_i[which_primary] )
+  G_i[which_primary] = PB_i[which_primary] * B_i[which_primary] * numerator / denominator
   
-  #
+  # Mortalities
   M0_i = m0_i * Bt_i
   M2_i = rowSums(Q_ij)
-  m2_i = M2_i / Bt_i
   
   # Assemble dynamics
   dBdt0_i = G_i - M2_i - M0_i
@@ -76,9 +79,14 @@ function( Time,
   if(what=="dBdt"){
     Return = dBdt_i
   }else{
-    # Calculate mortality
+    # Convert to rates
+    g_i = G_i / Bt_i
+    m2_i = M2_i / Bt_i
+
+    # Total mortality
     m_i = m2_i + m0_i
     M_i = M2_i + M0_i
+
     # Predation mortality .. removed because it doesn't vary over time
     #M2_i = (DC_ij %*% (B_i*QB_i))[,1] / B_i
     # Bundle and return

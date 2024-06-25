@@ -17,7 +17,7 @@
 #' Todo
 #'
 #' @export
-myode = function( f, a, b, y0, n, Pars, method ){
+myode = function( f, a, b, y0, n, Pars, method = "lsode" ){
   
   # Designed for dBdt, which outputs vector (not list)
   f2 = function( Time, State, Pars ){
@@ -25,7 +25,8 @@ myode = function( f, a, b, y0, n, Pars, method ){
     return(list(out))
   }
   
-  out = RTMBode::ode( func = f2,
+  #out = RTMBode::ode( func = f2,
+  out = deSolve::ode( func = f2,
                 times = seq(a,b,length=n+1), # n+1 to match rk4
                 y = y0,
                 method = method,

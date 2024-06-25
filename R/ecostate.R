@@ -19,6 +19,9 @@
 #'        starting (or fixed) value for equilibrium biomass for each taxon
 #' @param DC numeric-matrix with rownames and colnamesmatching \code{taxa}, 
 #'        where each column provides the diet proportion for a given predator
+#' @param V numeric-matrix with rownames and colnamesmatching \code{taxa}, 
+#'        where each element gives the vulnerability parameter for a given
+#'        interaction.
 #' @param fit_B Character-vector listing \code{taxa} for which equilibrium
 #'        biomass is estimated as a fixed effect
 #' @param fit_Q Character-vector listing \code{taxa} for which the catchability
@@ -50,6 +53,7 @@ function( taxa,
           B,
           DC,
           EE,
+          V,
           fit_B = vector(),
           fit_Q = vector(),
           fit_B0 = vector(),
@@ -76,21 +80,30 @@ function( taxa,
   if(!all(taxa %in% names(QB))) stop("Check names for `QB`")
   if(!all(taxa %in% names(B))) stop("Check names for `B`")
   if(!all(taxa %in% names(EE))) stop("Check names for `EE`")
-  if(!all(taxa %in% rownames(DC)) | !all(taxa %in% colnames(DC))) stop("Check dimnames for `DC`")
+  if(!all(taxa %in% rownames(V_ij)) | !all(taxa %in% colnames(V_ij))) stop("Check dimnames for `V`")
+  if(!all(taxa %in% rownames(V_ij)) | !all(taxa %in% colnames(V_ij))) stop("Check dimnames for `V`")
   logPB_i = log(PB[taxa])
   logQB_i = log(QB[taxa])
   logB_i = log(B[taxa])
   DC_ij = DC[taxa,taxa]
   EE_i = EE[taxa]
   #noB_i = rep(0,n_species)
-  logV_ij = matrix( log(2), nrow=n_species, ncol=n_species )
-  if(any(is.na(c(logPB_i,logQB_i,DC_ij)))){
-    stop("Check `PB` `QB` and `DC` for NAs or `taxa` that are not provided")
-  }
-  
   # Indicators 
   which_primary = which( colSums(DC_ij)==0 )
   noB_i = ifelse( is.na(logB_i), 1, 0 )
+  
+  if(any(is.na(c(logPB_i,logQB_i[-which_primary],DC_ij)))){
+    stop("Check `PB` `QB` and `DC` for NAs or `taxa` that are not provided")
+  }
+  
+  if(missing(V)){
+    V_ij = array(2, dim=c(n_species,n_species), dimnames=list(taxa,taxa))
+    V_ij[,which_primary] = 91  # Default high value from Gaichas et al. 2011
+  }else{
+    V_ij = V[taxa,taxa]
+  }
+  Vprime_ij = log(V_ij - 1)
+  # V = exp(Vprime) + 1 so 1 < V < Inf
   
   # Rescale DC_ij to sum to 1 by predator
   if( any(abs(colSums(DC_ij)-1) > 0.01) ){
@@ -121,7 +134,7 @@ function( taxa,
             EE_i = EE_i,
             logPB_i = logPB_i,
             logQB_i = logQB_i,
-            logV_ij = logV_ij,
+            Vprime_ij = Vprime_ij,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
             epsilon_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) ),
@@ -135,7 +148,7 @@ function( taxa,
   map$logPB_i = factor( rep(NA,n_species) )
   map$logQB_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
-  map$logV_ij = factor( array(NA,dim=dim(p$logV_ij)) )
+  map$Vprime_ij = factor( array(NA,dim=dim(p$Vprime_ij)) )
   
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
@@ -287,11 +300,12 @@ function( taxa,
     control = control,
     Bobs_ti = Bobs_ti,
     Cobs_ti = Cobs_ti,
-    logPB_i = logPB_i, 
-    logQB_i = logQB_i, 
-    logB_i = logB_i, 
-    DC_ij = DC_ij, 
-    logV_ij = logV_ij,
+    # Avoid stuff that's in parhat
+    #logPB_i = logPB_i, 
+    #logQB_i = logQB_i, 
+    #logB_i = logB_i, 
+    #DC_ij = DC_ij, 
+    #Vprime_ij = Vprime_ij,
     hessian.fixed = hessian.fixed,
     taxa = taxa,
     years = years
@@ -421,21 +435,31 @@ function( x,
   out1 = rbind( 
     "QB" = exp(x$internal$parhat[['logQB_i']]),
     "PB" = exp(x$internal$parhat[['logPB_i']]),
-    "B" = x$rep$out_initial$B_i,
+    # Use out_initial so it includes add_equilibrium values
+    "B" = x$rep$out_initial$B_i,      
     "EE" = x$rep$out_initial$EE_i
   )
   colnames(out1) = names(x$internal$logPB_i)
   
   # Diet
-  out2 = x$internal$DC_ij
+  out2 = x$internal$parhat[["DC_ij"]]
   
+  # Diet
+  out3 = exp(x$internal$parhat[["Vprime_ij"]]) + 1
+  
+  # Print to terminal
   if(isFALSE(silent)){
     cat("EcoSim parameters:\n")
     print(out1)
     cat("\nEcoSim diet matrix:\n")
     print(out2)
+    cat("\nEcoSim vulnerability matrix:\n")
+    print(out3)
   }
-  return(invisible(list("parameters"=out1, "diet_matrix"=out2)))
+  Return = list( "parameters" = out1, 
+                 "diet_matrix" = out2, 
+                 "vulnerability_matrix" = out3 )
+  return(invisible(Return))
 }
 
 #' @title Print fitted ecostate object
