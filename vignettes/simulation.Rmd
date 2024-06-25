@@ -166,7 +166,7 @@ out = ecostate( taxa = taxa,
                 control = ecostate_control( inverse_method = "Standard", 
                                             trace = 1,
                                             nlminb_loops = 1,
-                                            getsd = FALSE ) )
+                                            getsd = TRUE ) )
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:
