@@ -34,7 +34,7 @@
 #'        settings.
 #'
 #' @importFrom TMB config
-#' @importFrom checkmate assertDouble
+#' @importFrom checkmate assertDouble assertFactor
 #'
 #' @details
 #' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
@@ -54,6 +54,8 @@ function( taxa,
           DC,
           EE,
           V,
+          type,
+          U,
           fit_B = vector(),
           fit_Q = vector(),
           fit_B0 = vector(),
@@ -75,11 +77,22 @@ function( taxa,
   # 
   n_species = length(taxa)
   
+  if(missing(U)){
+    U = rep(0.2, n_species)
+    names(U) = taxa
+  }  
+  if(missing(type)){
+    type = factor( ifelse(colSums(DC_ij)==0, "auto", "hetero"), levels=c("auto","hetero","detritus") )
+    names(type) = taxa
+  }
+  
   # Configuring inputs
   if(!all(taxa %in% names(PB))) stop("Check names for `PB`")
   if(!all(taxa %in% names(QB))) stop("Check names for `QB`")
   if(!all(taxa %in% names(B))) stop("Check names for `B`")
   if(!all(taxa %in% names(EE))) stop("Check names for `EE`")
+  if(!all(taxa %in% names(type))) stop("Check names for `type`")
+  if(!all(taxa %in% names(U))) stop("Check names for `U`")
   if(!all(taxa %in% rownames(V_ij)) | !all(taxa %in% colnames(V_ij))) stop("Check dimnames for `V`")
   if(!all(taxa %in% rownames(V_ij)) | !all(taxa %in% colnames(V_ij))) stop("Check dimnames for `V`")
   logPB_i = log(PB[taxa])
@@ -87,9 +100,16 @@ function( taxa,
   logB_i = log(B[taxa])
   DC_ij = DC[taxa,taxa]
   EE_i = EE[taxa]
+  type_i = type[taxa]
+  U_i = U[taxa]
+  
+  #
+  assertFactor( type, levels=c("auto","hetero","detritus"), len=n_species, any.missing=FALSE )
+  assertDouble( exp(PB_i)/exp(logQB_i)+U_i, len=n_species, any.missing=FALSE, lower=1 )
+
   #noB_i = rep(0,n_species)
   # Indicators 
-  which_primary = which( colSums(DC_ij)==0 )
+  which_primary = which( type_i=="auto" )
   noB_i = ifelse( is.na(logB_i), 1, 0 )
   
   if(any(is.na(c(logPB_i,logQB_i[-which_primary],DC_ij)))){

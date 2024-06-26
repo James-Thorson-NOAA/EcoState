@@ -93,6 +93,8 @@ function( p ) {
   Z_ti = F_ti + M_ti 
   
   # likelihood
+  Bobs_ti = OBS(Bobs_ti)
+  Cobs_ti = OBS(Cobs_ti)
   Bexp_ti = Bhat_ti * (rep(1,nrow(Bhat_ti)) %*% t(exp(p$logq_i)))
   for( i in seq_len(n_species) ){
   for( t in seq_len(nrow(Bexp_ti)) ){
