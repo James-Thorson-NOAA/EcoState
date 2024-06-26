@@ -14,6 +14,7 @@ ecostate(
   B,
   DC,
   EE,
+  V,
   fit_B = vector(),
   fit_Q = vector(),
   fit_B0 = vector(),
@@ -45,6 +46,10 @@ starting (or fixed) value for equilibrium biomass for each taxon}
 
 \item{DC}{numeric-matrix with rownames and colnamesmatching \code{taxa}, 
 where each column provides the diet proportion for a given predator}
+
+\item{V}{numeric-matrix with rownames and colnamesmatching \code{taxa}, 
+where each element gives the vulnerability parameter for a given
+interaction.}
 
 \item{fit_B}{Character-vector listing \code{taxa} for which equilibrium
 biomass is estimated as a fixed effect}

@@ -26,8 +26,6 @@
 #'
 #' This then allows us to separate alternative components of the foodweb.
 #'
-#' @importFrom corpcor pseudoinverse
-#'
 #' @export
 compute_tracer <-
 function( Q_ij,
@@ -49,10 +47,25 @@ function( Q_ij,
   
   # Solve for trophic level
   if( inverse_method == "Penrose_moore" ){
-    inverse_IminusQ = corpcor::pseudoinverse( diag(nrow(Qprime_ij)) - Qprime_ij )
+    #inverse_IminusQ = corpcor::pseudoinverse( diag(nrow(Qprime_ij)) - Qprime_ij )
+    inverse_IminusQ = ginv( diag(nrow(Qprime_ij)) - Qprime_ij )
   }else{
     inverse_IminusQ = solve( diag(nrow(Qprime_ij)) - Qprime_ij )
   }
   x_i = t(tracer_i) %*% inverse_IminusQ
   return( x_i )
 }
+
+#' @title Penrose-Moore pseudoinverse
+#' @description Extend \code{MASS:ginv} to work with RTMB
+#' @param X Matrix used to compute pseudoinverse
+#' @importFrom MASS ginv
+ginv <- RTMB::ADjoint(function(X) {
+    n <- sqrt(length(X))
+    dim(X) <- c(n,n)
+    MASS::ginv(X)
+}, function(X,Y,dY) {
+    n <- sqrt(length(X))
+    dim(Y) <- dim(dY) <- c(n,n)
+    -t(Y)%*%dY%*%t(Y)
+}, name="ginv")

@@ -13,9 +13,9 @@ export(ode23)
 export(plot_foodweb)
 export(print_ecopars)
 export(rk4sys)
+importFrom(MASS,ginv)
 importFrom(TMB,config)
 importFrom(checkmate,assertDouble)
-importFrom(corpcor,pseudoinverse)
 
 # Edited by hand
 import("RTMB")
