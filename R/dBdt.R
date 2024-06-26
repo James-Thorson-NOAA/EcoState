@@ -40,7 +40,8 @@ function( Time,
   PB_i = exp(logPB_i)
   V_ij = exp(Vprime_ij) + 1
   B_i = exp(logB_i)
-  # EE_i
+  # EE_i is in Pars
+  # U_i is in Pars
   F_i = exp(logF_i)
   
   # Compute dyynamics 
@@ -49,23 +50,32 @@ function( Time,
   Ypred_ij = rep(1,n_species) %*% t(Ypred_j)
   Yprey_i = Bt_i / B_i
   Yprey_ij = Yprey_i %*% t(rep(1,n_species))
+  U_ij = rep(1,n_species) %*% t(U_i)
   # Consumption = Equilibrium * Pred_functional_response * Prey_functional_response
-  #Q_ij = Qe_ij * ( V_ij * Ypred_ij / ( V_ij - 1 + Ypred_ij ) ) * Yprey_ij
   Q_ij = Qe_ij * ( V_ij * Ypred_ij / ( V_ij - 1 + Ypred_ij ) ) * Yprey_ij
+
   # Calculate growth G_i (called C_i originally but conflicts with catch C_ti)
   G_i = GE_i * colSums(Q_ij)
   # Replace production for consumption for primary producers, including self-limitation via V_ij
-  #G_i[which_primary] = PB_i[which_primary] * Bt_i[which_primary]
-  numerator = diag(V_ij[which_primary,which_primary]) * Yprey_i[which_primary]
-  denominator = ( diag(V_ij[which_primary,which_primary]) - 1 + Yprey_i[which_primary] )
+  numerator = diag(V_ij[which_primary,which_primary,drop=FALSE]) * Yprey_i[which_primary]
+  denominator = ( diag(V_ij[which_primary,which_primary,drop=FALSE]) - 1 + Yprey_i[which_primary] )
   G_i[which_primary] = PB_i[which_primary] * B_i[which_primary] * numerator / denominator
+  # Replace for detritus
+  G_i[which_detritus] = sum(Q_ij * U_ij) + sum(m0_i * Bt_i)
   
   # Mortalities
   M0_i = m0_i * Bt_i
   M2_i = rowSums(Q_ij)
+  m2_i = M2_i / Bt_i
   
+  # Total mortality
+  m_i = m2_i + m0_i
+  # Replace for detritus
+  m_i[which_detritus] = m2_i[which_detritus] + detritus_turnover
+  M_i = m_i * Bt_i
+
   # Assemble dynamics
-  dBdt0_i = G_i - M2_i - M0_i
+  dBdt0_i = G_i - M_i
   # Include stochasticity ... as function of Bt_i
   dBdt1_i = dBdt0_i + epsilon_i*Bt_i
   # Augment with fishing mortality and catches
@@ -81,11 +91,6 @@ function( Time,
   }else{
     # Convert to rates
     g_i = G_i / Bt_i
-    m2_i = M2_i / Bt_i
-
-    # Total mortality
-    m_i = m2_i + m0_i
-    M_i = M2_i + M0_i
 
     # Predation mortality .. removed because it doesn't vary over time
     #M2_i = (DC_ij %*% (B_i*QB_i))[,1] / B_i
@@ -102,7 +107,8 @@ function( Time,
                    m_i = m_i, 
                    M2_i = M2_i, 
                    m2_i = m2_i, 
-                   Qe_ij = Qe_ij, 
+                   Qe_ij = Qe_ij,
+                   detritus_turnover = detritus_turnover, 
                    dBdt0_i = dBdt0_i, 
                    dBdt1_i = dBdt1_i, 
                    dBdt_i = dBdt_i)

@@ -86,7 +86,7 @@ function( p ) {
     # Compute trophic level
     TL_ti[t,] = compute_tracer( out$Q_ij, 
                                 inverse_method = inverse_method,
-                                which_primary = which_primary,
+                                which_primary = c(which_primary,which_detritus),
                                 tracer_i = rep(1,n_species) )
   }
   F_ti = exp(p$logF_ti)

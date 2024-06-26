@@ -105,14 +105,16 @@ function( taxa,
   
   #
   assertFactor( type, levels=c("auto","hetero","detritus"), len=n_species, any.missing=FALSE )
-  assertDouble( exp(PB_i)/exp(logQB_i)+U_i, len=n_species, any.missing=FALSE, lower=1 )
+  if(sum(type=="detritus") >=2) stop("Currently can only specify one detritus variable")
+  assertDouble( U_i, len=n_species, any.missing=FALSE, upper=1 )      # GE = 1-U-A and A>=0 so GE <= 1-U so GE+U <= 1
 
   #noB_i = rep(0,n_species)
   # Indicators 
   which_primary = which( type_i=="auto" )
+  which_detritus = which( type_i=="detritus" )
   noB_i = ifelse( is.na(logB_i), 1, 0 )
   
-  if(any(is.na(c(logPB_i,logQB_i[-which_primary],DC_ij)))){
+  if(any(is.na(c(logPB_i,logQB_i[-c(which_primary,which_detritus)],DC_ij)))){
     stop("Check `PB` `QB` and `DC` for NAs or `taxa` that are not provided")
   }
   
@@ -154,6 +156,7 @@ function( taxa,
             EE_i = EE_i,
             logPB_i = logPB_i,
             logQB_i = logQB_i,
+            U_i = U_i,
             Vprime_ij = Vprime_ij,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
@@ -167,6 +170,7 @@ function( taxa,
   # 
   map$logPB_i = factor( rep(NA,n_species) )
   map$logQB_i = factor( rep(NA,n_species) )
+  map$U_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
   map$Vprime_ij = factor( array(NA,dim=dim(p$Vprime_ij)) )
   
@@ -245,6 +249,7 @@ function( taxa,
                   scale_solver = control$scale_solver
                   inverse_method = control$inverse_method
                   which_primary = which_primary
+                  which_detritus = which_detritus
                   environment()
   })
   environment(compute_nll) <- data
@@ -257,6 +262,7 @@ function( taxa,
                   #DC_ij = DC_ij
                   #logV_ij = logV_ij
                   which_primary = which_primary
+                  which_detritus = which_detritus
                   #EE_i = EE_i
                   n_species = n_species
                   F_type = control$F_type
@@ -270,7 +276,7 @@ function( taxa,
   obj <- MakeADFun( func = compute_nll, 
                     parameters = p,
                     map = map,
-                    random = c("epsilon_ti"),
+                    random = control$random,
                     profile = control$profile,
                     silent = control$silent )
   
@@ -328,7 +334,8 @@ function( taxa,
     #Vprime_ij = Vprime_ij,
     hessian.fixed = hessian.fixed,
     taxa = taxa,
-    years = years
+    years = years,
+    type_i = type_i
   )
   out = list(
     obj = obj,
@@ -397,6 +404,7 @@ function( nlminb_loops = 1,
           trace = getOption("ecostate.trace", 1),
           verbose = getOption("ecostate.verbose", FALSE),
           profile = c("logF_ti"),
+          random = c("epsilon_ti"),
           tmb_par = NULL,
           map = NULL,
           getJointPrecision = FALSE,
@@ -424,6 +432,7 @@ function( nlminb_loops = 1,
     trace = trace,
     verbose = verbose,
     profile = profile,
+    random = random,
     tmb_par = tmb_par,
     map = map,
     getJointPrecision = getJointPrecision,
@@ -452,14 +461,16 @@ function( x,
           silent = FALSE ){
   
   # Params
-  out1 = rbind( 
+  out1 = data.frame( 
+    "type" = x$internal$type_i,
     "QB" = exp(x$internal$parhat[['logQB_i']]),
     "PB" = exp(x$internal$parhat[['logPB_i']]),
     # Use out_initial so it includes add_equilibrium values
     "B" = x$rep$out_initial$B_i,      
-    "EE" = x$rep$out_initial$EE_i
+    "EE" = x$rep$out_initial$EE_i,
+    "U" = x$internal$parhat[["U_i"]]
   )
-  colnames(out1) = names(x$internal$logPB_i)
+  #colnames(out1) = x$internal$taxa
   
   # Diet
   out2 = x$internal$parhat[["DC_ij"]]
