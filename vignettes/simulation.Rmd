@@ -83,8 +83,8 @@ pars = list( logB_i = log(B0_i),
              EE_i = EE_i,
              DC_ij = DC_ij,
              noB_i = ifelse(is.na(B0_i),1,0),
-             epsilon_i = deltaB_ti[t,],
-             logF_i = log(F_t),
+             epsilon_i = rep(0,n_taxa),
+             logF_i = rep(-Inf,n_taxa),
              which_primary = which(colSums(DC_ij)==0),
              F_type = "integrated",
              n_species = n_taxa )
@@ -101,7 +101,7 @@ C_ti[1,] = NA
 
 for( t in seq_along(years)[-1] ){
   # Fishing mortality ramps up for two predators
-  F_t = c( 0, 0, t/n_years*0.2, 0, t/n_years*0.1 )
+  F_t = c( 0, 0, 0, 0, t/n_years*0.2, t/n_years*0.1 )
 
   #
   pars_t = pars_full
@@ -114,7 +114,7 @@ for( t in seq_along(years)[-1] ){
         a = years[t-1], 
         b = years[t],
         n = n_steps,
-        Pars = pars_full,
+        Pars = pars_t,
         y0 = c( B_ti[t-1,], rep(0,n_taxa) ) )
   
   # Record results
@@ -136,9 +136,9 @@ Biomass = na.omit(data.frame(expand.grid(dimnames(Bobs_ti)), "Mass"=as.vector(Bo
 
 # Settings: specify what parameters to estimate
 fit_delta = taxa   # process errors
-fit_Q = taxa       # catchability coefficient
+fit_Q = c()       # catchability coefficient
 fit_B0 = taxa      # non-equilibrium initial condition
-fit_B = c()       # equilibrium biomass
+fit_B = taxa       # equilibrium biomass
 
 # Solving for EE and giving uninformed initial values for biomass
 fittedB_i = rep(1,n_taxa)
