@@ -143,9 +143,9 @@ function( p ) {
   ADREPORT( F_ti )
   ADREPORT( Z_ti )
   ADREPORT( dBdt0_ti )
-  if( inverse_method=="Standard" ){
+  #if( inverse_method=="Standard" ){
     ADREPORT( TL_ti )
-  }
+  #}
   
   return(jnll)
 }

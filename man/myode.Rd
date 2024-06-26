@@ -4,7 +4,7 @@
 \alias{myode}
 \title{Generic ODE solver}
 \usage{
-myode(f, a, b, y0, n, Pars, method)
+myode(f, a, b, y0, n, Pars, method = "lsode")
 }
 \arguments{
 \item{f}{function in the differential equation y' = f(x, y);

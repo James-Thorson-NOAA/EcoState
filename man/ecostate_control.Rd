@@ -15,6 +15,7 @@ ecostate_control(
   verbose = getOption("ecostate.verbose", FALSE),
   profile = c("logF_ti"),
   tmb_par = NULL,
+  map = NULL,
   getJointPrecision = FALSE,
   integration_method = c("ABM", "RK4", "ode23", "rk4", "lsoda"),
   n_steps = 10,
@@ -48,6 +49,8 @@ for the outer optimizer. Passed to
 
 \item{tmb_par}{list of parameters for starting values, with shape identical
 to `tinyVAST(...)$internal$parlist`}
+
+\item{map}{list of mapping values, passed to [RTMB::MakeADFun]}
 
 \item{getJointPrecision}{whether to get the joint precision matrix.  Passed
 to \code{\link[TMB]{sdreport}}.}

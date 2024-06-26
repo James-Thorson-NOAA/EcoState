@@ -16,7 +16,7 @@ Depends:
 Imports:
     RTMB (>= 1.5.0),
     TMB,
-    corpcor,
+    MASS,
     checkmate,
     ggplot2,
     ggnetwork,
