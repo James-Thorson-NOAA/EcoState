@@ -86,13 +86,15 @@ function( p ) {
     # Compute trophic level
     TL_ti[t,] = compute_tracer( out$Q_ij, 
                                 inverse_method = inverse_method,
-                                which_primary = which_primary,
+                                which_primary = c(which_primary,which_detritus),
                                 tracer_i = rep(1,n_species) )
   }
   F_ti = exp(p$logF_ti)
   Z_ti = F_ti + M_ti 
   
   # likelihood
+  Bobs_ti = OBS(Bobs_ti)
+  Cobs_ti = OBS(Cobs_ti)
   Bexp_ti = Bhat_ti * (rep(1,nrow(Bhat_ti)) %*% t(exp(p$logq_i)))
   for( i in seq_len(n_species) ){
   for( t in seq_len(nrow(Bexp_ti)) ){

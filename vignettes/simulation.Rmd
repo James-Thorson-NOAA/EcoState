@@ -16,6 +16,7 @@ knitr::opts_chunk$set(
 )
 # Install locally
 #  devtools::install_local( R'(C:\Users\James.Thorson\Desktop\Git\ecostate)', force=TRUE )
+#  devtools::install_github( 'James-Thorson-NOAA/ecostate', force=TRUE )
 # Build
 #  setwd(R'(C:\Users\James.Thorson\Desktop\Git\ecostate)'); devtools::build_rmd("vignettes/simulation.Rmd"); rmarkdown::render( "vignettes/simulation.Rmd", rmarkdown::pdf_document())
 ```
@@ -49,7 +50,8 @@ DC_ij = matrix( c(
   0,    0,      0,     0,     0,    0,
   0,    0,      0,     0,     0,    0
 ), byrow=TRUE, ncol=n_taxa)
-which_primary = which(colSums(DC_ij)==0)
+which_primary = 1
+which_detritus = 2 
 PB_i = c( 90, 90, 4, 2, 0.2, 0.1 )         # Reciprocal of mean age according to Polovina-1984 ~= M
 QB_i = c( NA, NA, 10, 15, 3, 4 )
 #EE_i = rep(NA, n_taxa)
@@ -81,11 +83,13 @@ pars = list( logB_i = log(B0_i),
              logQB_i = log(QB_i),
              Vprime_ij = log(V_ij -1),
              EE_i = EE_i,
+             U_i = rep(0.2, n_taxa),
              DC_ij = DC_ij,
              noB_i = ifelse(is.na(B0_i),1,0),
              epsilon_i = rep(0,n_taxa),
              logF_i = rep(-Inf,n_taxa),
              which_primary = which(colSums(DC_ij)==0),
+             which_detritus = c(),
              F_type = "integrated",
              n_species = n_taxa )
 
@@ -141,11 +145,12 @@ fit_B0 = taxa      # non-equilibrium initial condition
 fit_B = taxa       # equilibrium biomass
 
 # Solving for EE and giving uninformed initial values for biomass
-fittedB_i = rep(1,n_taxa)
+fittedB_i = exp(pars_full$logB_i)
 fittedEE_i = rep(NA, n_taxa)
+#type = factor(c("auto","detritus","hetero","hetero","hetero","hetero"), levels=c("auto","hetero","detritus"))
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
-names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = taxa
+names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = names(type) = taxa
   dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
   
 # Run model
@@ -159,14 +164,15 @@ out = ecostate( taxa = taxa,
                 B = fittedB_i,
                 EE = fittedEE_i,
                 V = V_ij,
+                type = type,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
                 control = ecostate_control( inverse_method = "Standard", 
                                             trace = 1,
-                                            nlminb_loops = 1,
-                                            getsd = TRUE ) )
+                                            nlminb_loops = 0,
+                                            getsd = FALSE ) )
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:

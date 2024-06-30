@@ -26,6 +26,7 @@ function( ecoparams,
   PB_i = exp(ecoparams$logPB_i)
   EE_i = ecoparams$EE_i
   DC_ij = ecoparams$DC_ij
+  U_i = ecoparams$U_i
   
   # Get equilibrium values
   # Eq-1 of Lucey-etal-2020:  B_i*PB_i*EE_i = DC_ij%*%(B_i*QB_i)
@@ -36,7 +37,7 @@ function( ecoparams,
   
     # Use Rpath logic ... see Rpath_logic.R
     #browser()
-    QB_i[which_primary] = 0
+    QB_i[c(which_primary,which_detritus)] = 0
     BioQB = B_i * QB_i
     C_ij  = DC_ij * ( rep(1,length(B_i)) %*% t(BioQB) ) # BioQB[col(DC_ij)] # ( rep(1,n_species) %*% t(BioQB) ) # 
     b_i = rowSums(C_ij[,which(noB_i==0),drop=FALSE])    # NAs for missing B_i
@@ -67,7 +68,10 @@ function( ecoparams,
     B_i[which(noB_i==1)] = x_i[which(noB_i==1)]
   }else{
     # Derive EE_i from B_i 
+    QB_i[c(which_primary,which_detritus)] = 0
     EE_i = (DC_ij %*% (B_i*QB_i))[,1] / ( PB_i * B_i )
+    # Sanity check
+    # (PB_i * EE_i * B_i) = (DC_ij %*% (B_i*QB_i))[,1]
   }
   # Equilibrium consumption
   Qe_ij = DC_ij * ( rep(1,length(B_i)) %*% t(B_i * QB_i) )
@@ -76,13 +80,20 @@ function( ecoparams,
   # Natural mortality
   m0_i = PB_i * (1 - EE_i)
   
+  # Calculate detritus turnover
+  detritus_input = sum(Qe_ij * ( rep(1,length(B_i)) %*% t(U_i) )) + sum( m0_i * B_i )
+  detritus_output = sum(Qe_ij[which_detritus,])
+  detritus_turnover = (detritus_input-detritus_output) / B_i[which_detritus]        # detrius_input - detritus_output - B*detritus_turnover = 0
+  
   #
   new_list = list(
     Qe_ij = Qe_ij,
     GE_i = GE_i,
-    m0_i = m0_i
+    m0_i = m0_i,
+    detritus_turnover = detritus_turnover
   )
   ecoparams = c( ecoparams, new_list )
+  # Overwrite values
   ecoparams$logB_i = log(B_i)
   ecoparams$EE_i = EE_i
   return( ecoparams )
