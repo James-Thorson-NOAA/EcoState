@@ -104,7 +104,7 @@ function( taxa,
   U_i = U[taxa]
   
   #
-  assertFactor( type, levels=c("auto","hetero","detritus"), len=n_species, any.missing=FALSE )
+  assertFactor( type_i, levels=c("auto","hetero","detritus"), len=n_species, any.missing=FALSE )
   if(sum(type=="detritus") >=2) stop("Currently can only specify one detritus variable")
   assertDouble( U_i, len=n_species, any.missing=FALSE, upper=1 )      # GE = 1-U-A and A>=0 so GE <= 1-U so GE+U <= 1
 
