@@ -43,25 +43,26 @@ n_taxa = length(taxa)
 # Ecopath-with-EcoSim parameters
 # Diet matrix
 DC_ij = matrix( c(
-  0,    0,      0.8,   0.2,   0,    0,
-  0,    0,      0.2,   0.8,   0,    0,
-  0,    0,      0,     0,     0.6,  0.4,
-  0,    0,      0,     0,     0.4,  0.6,
+  0,    0,      0.9,   0.3,   0,    0,
+  0,    0,      0.1,   0.7,   0,    0,
+  0,    0,      0,     0,     0.8,  0.4,
+  0,    0,      0,     0,     0.2,  0.6,
   0,    0,      0,     0,     0,    0,
   0,    0,      0,     0,     0,    0
 ), byrow=TRUE, ncol=n_taxa)
-which_primary = 1
-which_detritus = 2 
-PB_i = c( 90, 90, 4, 2, 0.2, 0.1 )         # Reciprocal of mean age according to Polovina-1984 ~= M
-QB_i = c( NA, NA, 10, 15, 3, 4 )
-#EE_i = rep(NA, n_taxa)
+PB_i = c( 90, 0.5, 4, 1, 0.2, 0.1 )         # Reciprocal of mean age according to Polovina-1984 ~= M
+QB_i = c( NA, NA, 10, 4, 3, 1 )
 EE_i = c( 0.9, 0.9, 0.9, 0.9, NA, NA )
+B_i = c( NA, NA, NA, NA, 1, 1 )
+U_i = rep( 0.2, n_taxa )
 B0_i = c( NA, NA, NA, NA, 1, 1 )
+type_i = c( "auto", "detritus", "hetero", "hetero", "hetero", "hetero" )
+which_primary = which(type_i=="auto")
+which_detritus = which(type_i=="detritus")
 V_ij = matrix( 2, nrow=n_taxa, ncol=n_taxa )
 V_ij[,which_primary] = 91
 
 # Simulation parameters
-fished_i = c( FALSE, FALSE, FALSE, FALSE, TRUE, TRUE )
 sigmaB_i = c(0.1, 0.1, 0.02, 0.02, 0.1, 0.1) # Taxa 3-4 crashes solver if sigmaB > 0.02
 ```
 
@@ -83,13 +84,15 @@ pars = list( logB_i = log(B0_i),
              logQB_i = log(QB_i),
              Vprime_ij = log(V_ij -1),
              EE_i = EE_i,
-             U_i = rep(0.2, n_taxa),
+             U_i = U_i,
              DC_ij = DC_ij,
+             type_i = type_i,
+             U_i = U_i,
              noB_i = ifelse(is.na(B0_i),1,0),
              epsilon_i = rep(0,n_taxa),
              logF_i = rep(-Inf,n_taxa),
-             which_primary = which(colSums(DC_ij)==0),
-             which_detritus = c(),
+             which_primary = which_primary,
+             which_detritus = which_detritus,
              F_type = "integrated",
              n_species = n_taxa )
 
@@ -146,11 +149,12 @@ fit_B = taxa       # equilibrium biomass
 
 # Solving for EE and giving uninformed initial values for biomass
 fittedB_i = exp(pars_full$logB_i)
+#fittedB_i = rep(6, n_taxa)
 fittedEE_i = rep(NA, n_taxa)
-#type = factor(c("auto","detritus","hetero","hetero","hetero","hetero"), levels=c("auto","hetero","detritus"))
+type = factor(c("auto","detritus","hetero","hetero","hetero","hetero"), levels=c("auto","hetero","detritus"))
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
-names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = names(type) = taxa
+names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = names(type) = names(U_i) = taxa
   dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
   
 # Run model
@@ -165,14 +169,15 @@ out = ecostate( taxa = taxa,
                 EE = fittedEE_i,
                 V = V_ij,
                 type = type,
+                U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
                 control = ecostate_control( inverse_method = "Standard", 
                                             trace = 1,
-                                            nlminb_loops = 0,
-                                            getsd = FALSE ) )
+                                            nlminb_loops = 1,
+                                            getsd = TRUE ) )
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:
