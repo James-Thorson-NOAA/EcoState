@@ -160,7 +160,8 @@ function( taxa,
             Vprime_ij = Vprime_ij,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
-            epsilon_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) ),
+            epsilon_ti = array( 0, dim=c(0,n_species) ),
+            alpha_ti = array( 0, dim=c(0,n_species) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
             logq_i = rep( log(1), n_species) )      # , PB_i=PB_i
 
@@ -177,6 +178,7 @@ function( taxa,
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
   p$logtau_i = ifelse(taxa %in% fit_eps, log(0.001), NA)
+  map$logtau_i = factor(ifelse(taxa %in% fit_eps, seq_len(n_species), NA))
   
   # Catches
   map$logF_ti = factor( ifelse(is.na(Cobs_ti), NA, seq_len(prod(dim(Cobs_ti)))) )
@@ -189,17 +191,27 @@ function( taxa,
   map$delta_i = factor( ifelse(taxa %in% fit_B0, seq_along(p$delta_i), NA) )
   
   # process errors
-  map$logtau_i = seq_len(n_species)
-  map$epsilon_ti = array( seq_len(prod(dim(p$epsilon_ti))), dim=dim(p$epsilon_ti))
-  for(i in 1:n_species){
-    if( is.na(p$logtau_i[i]) ){
-      map$logtau_i[i] = NA
-      map$epsilon_ti[,i] = NA
-      p$epsilon_ti[,i] = 0
+  if( control$process_error == "epsilon" ){
+    p$epsilon_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) )
+    map$epsilon_ti = array( seq_len(prod(dim(p$epsilon_ti))), dim=dim(p$epsilon_ti))
+    for(i in 1:n_species){
+      if( is.na(p$logtau_i[i]) ){
+        p$epsilon_ti[,i] = 0
+        map$epsilon_ti[,i] = NA
+      }
     }
+    map$epsilon_ti = factor(map$epsilon_ti)
+  }else{
+    p$alpha_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) )
+    map$alpha_ti = array( seq_len(prod(dim(p$alpha_ti))), dim=dim(p$alpha_ti))
+    for(i in 1:n_species){
+      if( is.na(p$logtau_i[i]) ){
+        p$alpha_ti[,i] = 0
+        map$alpha_ti[,i] = NA
+      }
+    }
+    map$alpha_ti = factor(map$alpha_ti)
   }
-  map$logtau_i = factor(map$logtau_i)
-  map$epsilon_ti = factor(map$epsilon_ti)
   
   # Measurement errors
   p$ln_sdB = log(0.1)
@@ -250,6 +262,7 @@ function( taxa,
                   inverse_method = control$inverse_method
                   which_primary = which_primary
                   which_detritus = which_detritus
+                  process_error = control$process_error
                   environment()
   })
   environment(compute_nll) <- data
@@ -381,6 +394,13 @@ function( taxa,
 #'        where all are adapted from \code{pracma} functions.
 #'        \code{"rk4"} and \code{lsoda} use those methods
 #'        from \code{deSolve::ode} as implemented by \code{RTMBode::ode}
+#' @param process_error Whether to include process error as a continuous rate
+#'        (i.e., an "innovation" parameterization, \code{process_error="epsilon"}) 
+#'        or as a discrete difference between expected
+#'        and predicted biomass (i.e., a "state-space" parameterization),  
+#'        \code{process_error="alpha"}The
+#'        former is more interpretable, whereas the latter is much more computationally
+#'        efficient.  
 #' @param F_type whether to integrate catches along with biomass (\code{"integrated"})
 #'        or calculate catches from the Baranov catch equation applied to average 
 #'        biomass (\code{"averaged"})
@@ -404,11 +424,12 @@ function( nlminb_loops = 1,
           trace = getOption("ecostate.trace", 1),
           verbose = getOption("ecostate.verbose", FALSE),
           profile = c("logF_ti"),
-          random = c("epsilon_ti"),
+          random = c("epsilon_ti","alpha_ti"),
           tmb_par = NULL,
           map = NULL,
           getJointPrecision = FALSE,
           integration_method = c( "ABM", "RK4", "ode23", "rk4", "lsoda" ),
+          process_error = c("epsilon", "alpha"),
           n_steps = 10,
           F_type = c("integrated", "averaged"),
           scale_solver = c("joint", "simple"),
@@ -420,6 +441,7 @@ function( nlminb_loops = 1,
   F_type = match.arg(F_type)
   scale_solver = match.arg(scale_solver)
   inverse_method = match.arg(inverse_method)
+  process_error = match.arg(process_error)
   
   # Return
   structure( list(
@@ -441,6 +463,7 @@ function( nlminb_loops = 1,
     F_type = F_type,
     scale_solver = scale_solver,
     inverse_method = inverse_method,
+    process_error = process_error,
     tmbad.sparse_hessian_compress = tmbad.sparse_hessian_compress
   ), class = "ecostate_control" )
 }

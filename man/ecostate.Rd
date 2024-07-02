@@ -15,6 +15,8 @@ ecostate(
   DC,
   EE,
   V,
+  type,
+  U,
   fit_B = vector(),
   fit_Q = vector(),
   fit_B0 = vector(),
