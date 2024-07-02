@@ -87,7 +87,6 @@ pars = list( logB_i = log(B0_i),
              U_i = U_i,
              DC_ij = DC_ij,
              type_i = type_i,
-             U_i = U_i,
              noB_i = ifelse(is.na(B0_i),1,0),
              epsilon_i = rep(0,n_taxa),
              logF_i = rep(-Inf,n_taxa),
@@ -177,7 +176,8 @@ out = ecostate( taxa = taxa,
                 control = ecostate_control( inverse_method = "Standard", 
                                             trace = 1,
                                             nlminb_loops = 1,
-                                            getsd = TRUE ) )
+                                            getsd = TRUE,
+                                            process_error = "epsilon" ) )
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:

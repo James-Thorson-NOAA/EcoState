@@ -14,10 +14,12 @@ ecostate_control(
   trace = getOption("ecostate.trace", 1),
   verbose = getOption("ecostate.verbose", FALSE),
   profile = c("logF_ti"),
+  random = c("epsilon_ti", "alpha_ti"),
   tmb_par = NULL,
   map = NULL,
   getJointPrecision = FALSE,
   integration_method = c("ABM", "RK4", "ode23", "rk4", "lsoda"),
+  process_error = c("epsilon", "alpha"),
   n_steps = 10,
   F_type = c("integrated", "averaged"),
   scale_solver = c("joint", "simple"),
@@ -62,6 +64,14 @@ version of adaptive Runge-Kutta-23,
 where all are adapted from \code{pracma} functions.
 \code{"rk4"} and \code{lsoda} use those methods
 from \code{deSolve::ode} as implemented by \code{RTMBode::ode}}
+
+\item{process_error}{Whether to include process error as a continuous rate
+(i.e., an "innovation" parameterization, \code{process_error="epsilon"}) 
+or as a discrete difference between expected
+and predicted biomass (i.e., a "state-space" parameterization),  
+\code{process_error="alpha"}The
+former is more interpretable, whereas the latter is much more computationally
+efficient.}
 
 \item{F_type}{whether to integrate catches along with biomass (\code{"integrated"})
 or calculate catches from the Baranov catch equation applied to average 
