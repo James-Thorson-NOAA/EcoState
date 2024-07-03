@@ -31,10 +31,10 @@ ecostate(
 \item{years}{Integer-vector of years included in model}
 
 \item{catch}{long-form data frame with columns \code{Mass}, \code{Year}
-and  \code{Taxa}}
+and  \code{Taxon}}
 
 \item{biomass}{long-form data frame with columns \code{Mass}, \code{Year}
-and  \code{Taxa}, where \code{Mass} is assumed to have the same units
+and  \code{Taxon}, where \code{Mass} is assumed to have the same units
 as \code{catch}}
 
 \item{PB}{numeric-vector with names matching \code{taxa}, providing the
@@ -52,6 +52,15 @@ where each column provides the diet proportion for a given predator}
 \item{V}{numeric-matrix with rownames and colnamesmatching \code{taxa}, 
 where each element gives the vulnerability parameter for a given
 interaction.}
+
+\item{type}{character-vector with names matching \code{taxa} and
+elements \code{c("auto","hetero","detritus")},
+indicating whether each taxon is a primary producer, consumer/predator, or
+detritus, respectively.}
+
+\item{U}{numeric-vector with names matching \code{taxa}, providing the 
+proportion of consumption that is unassimilated and therefore
+exported to detritus}
 
 \item{fit_B}{Character-vector listing \code{taxa} for which equilibrium
 biomass is estimated as a fixed effect}

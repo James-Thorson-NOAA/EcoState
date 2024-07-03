@@ -15,7 +15,8 @@ function( p ) {
   
   p = add_equilibrium( p,
                        scale_solver = scale_solver,
-                       noB_i = noB_i )
+                       noB_i = noB_i,
+                       type_i = type_i )
   
   # Extract epsilon_ti (local copy be modified later)
   epsilon_ti = p$epsilon_ti
@@ -116,7 +117,7 @@ function( p ) {
     # Compute trophic level
     TL_ti[t,] = compute_tracer( out$Q_ij, 
                                 inverse_method = inverse_method,
-                                which_primary = c(which_primary,which_detritus),
+                                type_i = type_i,
                                 tracer_i = rep(1,n_species) )
   }
   F_ti = exp(p$logF_ti)

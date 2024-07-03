@@ -15,6 +15,7 @@ export(print_ecopars)
 export(rk4sys)
 importFrom(MASS,ginv)
 importFrom(TMB,config)
+importFrom(checkmate,assertCharacter)
 importFrom(checkmate,assertDouble)
 importFrom(checkmate,assertFactor)
 

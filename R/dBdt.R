@@ -44,6 +44,12 @@ function( Time,
   # U_i is in Pars
   F_i = exp(logF_i)
   
+  # passed via environment:  type_i
+  
+  # Indicators 
+  which_primary = which( type_i=="auto" )
+  which_detritus = which( type_i=="detritus" )
+  
   # Compute dyynamics 
   # Predator and prey abundance relative to equilibrium
   Ypred_j = Bt_i / B_i
@@ -57,8 +63,8 @@ function( Time,
   # Calculate growth G_i (called C_i originally but conflicts with catch C_ti)
   G_i = GE_i * colSums(Q_ij)
   # Replace production for consumption for primary producers, including self-limitation via V_ij
-  numerator = diag(V_ij[which_primary,which_primary,drop=FALSE]) * Yprey_i[which_primary]
-  denominator = ( diag(V_ij[which_primary,which_primary,drop=FALSE]) - 1 + Yprey_i[which_primary] )
+  numerator = V_ij[cbind(which_primary,which_primary)] * Yprey_i[which_primary]
+  denominator = ( V_ij[cbind(which_primary,which_primary)] - 1 + Yprey_i[which_primary] )
   G_i[which_primary] = PB_i[which_primary] * B_i[which_primary] * numerator / denominator
   # Replace for detritus
   G_i[which_detritus] = sum(Q_ij * U_ij) + sum(m0_i * Bt_i)

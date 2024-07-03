@@ -7,16 +7,23 @@
 #' @param taxa Character vector of taxa included in model. 
 #' @param years Integer-vector of years included in model                  
 #' @param catch long-form data frame with columns \code{Mass}, \code{Year}
-#'        and  \code{Taxa}
+#'        and  \code{Taxon}
 #' @param biomass long-form data frame with columns \code{Mass}, \code{Year}
-#'        and  \code{Taxa}, where \code{Mass} is assumed to have the same units
+#'        and  \code{Taxon}, where \code{Mass} is assumed to have the same units
 #'        as \code{catch}
 #' @param PB numeric-vector with names matching \code{taxa}, providing the                        
 #'        ratio of production to biomass for each taxon
-#' @param QB numeric-vector with names matching \code{taxa}, providing the
+#' @param QB numeric-vector with names matching \code{taxa}, providing the          
 #'        ratio of consumption to biomass for each taxon
 #' @param B numeric-vector with names matching \code{taxa}, providing the
 #'        starting (or fixed) value for equilibrium biomass for each taxon
+#' @param U numeric-vector with names matching \code{taxa}, providing the 
+#'        proportion of consumption that is unassimilated and therefore
+#'        exported to detritus
+#' @param type character-vector with names matching \code{taxa} and
+#'        elements \code{c("auto","hetero","detritus")},
+#'        indicating whether each taxon is a primary producer, consumer/predator, or
+#'        detritus, respectively.   
 #' @param DC numeric-matrix with rownames and colnamesmatching \code{taxa}, 
 #'        where each column provides the diet proportion for a given predator
 #' @param V numeric-matrix with rownames and colnamesmatching \code{taxa}, 
@@ -34,7 +41,7 @@
 #'        settings.
 #'
 #' @importFrom TMB config
-#' @importFrom checkmate assertDouble assertFactor
+#' @importFrom checkmate assertDouble assertFactor assertCharacter
 #'
 #' @details
 #' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
@@ -82,7 +89,7 @@ function( taxa,
     names(U) = taxa
   }  
   if(missing(type)){
-    type = factor( ifelse(colSums(DC_ij)==0, "auto", "hetero"), levels=c("auto","hetero","detritus") )
+    type = ifelse(colSums(DC_ij)==0, "auto", "hetero")
     names(type) = taxa
   }
   
@@ -93,19 +100,30 @@ function( taxa,
   if(!all(taxa %in% names(EE))) stop("Check names for `EE`")
   if(!all(taxa %in% names(type))) stop("Check names for `type`")
   if(!all(taxa %in% names(U))) stop("Check names for `U`")
-  if(!all(taxa %in% rownames(V_ij)) | !all(taxa %in% colnames(V_ij))) stop("Check dimnames for `V`")
-  if(!all(taxa %in% rownames(V_ij)) | !all(taxa %in% colnames(V_ij))) stop("Check dimnames for `V`")
   logPB_i = log(PB[taxa])
   logQB_i = log(QB[taxa])
   logB_i = log(B[taxa])
-  DC_ij = DC[taxa,taxa]
+  DC_ij = DC[taxa,taxa,drop=FALSE]
   EE_i = EE[taxa]
   type_i = type[taxa]
   U_i = U[taxa]
   
+  # Deal with V
+  if(missing(V)){
+    V_ij = array(2, dim=c(n_species,n_species), dimnames=list(taxa,taxa))
+    V_ij[,which_primary,drop=FALSE] = 91  # Default high value from Gaichas et al. 2011
+  }else{
+    if(!all(taxa %in% rownames(V)) | !all(taxa %in% colnames(V))) stop("Check dimnames for `V`")
+    if(!all(taxa %in% rownames(V)) | !all(taxa %in% colnames(V))) stop("Check dimnames for `V`")
+    V_ij = V[taxa,taxa,drop=FALSE]
+  }
+  Vprime_ij = log(V_ij - 1)
+  # V = exp(Vprime) + 1 so 1 < V < Inf
+  
   #
-  assertFactor( type_i, levels=c("auto","hetero","detritus"), len=n_species, any.missing=FALSE )
-  if(sum(type=="detritus") >=2) stop("Currently can only specify one detritus variable")
+  assertCharacter( type_i, len=n_species, any.missing=FALSE )
+  if(isFALSE(all(type_i %in% c("auto","hetero","detritus")))) stop("Confirm ", type, " only contains auto, hetero, or detritus")
+  if(sum(type_i=="detritus") >=2) stop("Currently can only specify one detritus variable")
   assertDouble( U_i, len=n_species, any.missing=FALSE, upper=1 )      # GE = 1-U-A and A>=0 so GE <= 1-U so GE+U <= 1
 
   #noB_i = rep(0,n_species)
@@ -117,15 +135,6 @@ function( taxa,
   if(any(is.na(c(logPB_i,logQB_i[-c(which_primary,which_detritus)],DC_ij)))){
     stop("Check `PB` `QB` and `DC` for NAs or `taxa` that are not provided")
   }
-  
-  if(missing(V)){
-    V_ij = array(2, dim=c(n_species,n_species), dimnames=list(taxa,taxa))
-    V_ij[,which_primary] = 91  # Default high value from Gaichas et al. 2011
-  }else{
-    V_ij = V[taxa,taxa]
-  }
-  Vprime_ij = log(V_ij - 1)
-  # V = exp(Vprime) + 1 so 1 < V < Inf
   
   # Rescale DC_ij to sum to 1 by predator
   if( any(abs(colSums(DC_ij)-1) > 0.01) ){
@@ -260,8 +269,9 @@ function( taxa,
                   noB_i = noB_i
                   scale_solver = control$scale_solver
                   inverse_method = control$inverse_method
-                  which_primary = which_primary
-                  which_detritus = which_detritus
+                  #which_primary = which_primary
+                  #which_detritus = which_detritus
+                  type_i = type_i
                   process_error = control$process_error
                   environment()
   })
@@ -274,8 +284,9 @@ function( taxa,
                   #logB_i = logB_i
                   #DC_ij = DC_ij
                   #logV_ij = logV_ij
-                  which_primary = which_primary
-                  which_detritus = which_detritus
+                  #which_primary = which_primary
+                  #which_detritus = which_detritus
+                  type_i = type_i
                   #EE_i = EE_i
                   n_species = n_species
                   F_type = control$F_type

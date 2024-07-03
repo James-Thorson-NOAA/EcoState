@@ -1,0 +1,176 @@
+---
+title: "EcoState as surplus production model"
+author: "James Thorson"
+output: rmarkdown::html_vignette
+#output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{Demonstrating EcoState via simulation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+# Install locally
+#  devtools::install_local( R'(C:\Users\James.Thorson\Desktop\Git\ecostate)', force=TRUE )
+#  devtools::install_github( 'James-Thorson-NOAA/ecostate', force=TRUE )
+# Build
+#  setwd(R'(C:\Users\James.Thorson\Desktop\Git\ecostate)'); devtools::build_rmd("vignettes/surplus_production.Rmd"); rmarkdown::render( "vignettes/surplus_production.Rmd", rmarkdown::pdf_document())
+```
+
+```{r setup, echo=TRUE, message=FALSE}
+library(EcoState)
+```
+
+`ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   I can be used as a surplus production model by treating a single species as a "producer"
+
+## Simulation demonstration
+
+We first simulate new data.  To do so, we simulate a Schaefer production model with Gompertz effort dynamics:
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# Time-interval
+years = 1981:2020
+n_years = length(years)
+
+# Biology
+r = 0.2
+K = 1000
+sigmaB = 0.5
+B0 = K * exp(sigmaB*rnorm(1))
+
+# Effort dynamics
+Bequil = 0.4 * K
+Brate = 0.2
+sigmaE = 0.1
+E0 = 0.01
+
+#
+C_t = E_t = B_t = rep(NA, n_years)
+B_t[1] = B0
+E_t[1] = E0
+
+#
+for( t in 2:n_years ){
+  B_t[t] = B_t[t-1] + r * B_t[t-1] * (1 - B_t[t-1]/K) * exp(sigmaB*rnorm(1))
+  E_t[t] = E_t[t-1] * (B_t[t-1]/Bequil)^Brate * exp(sigmaE*rnorm(1))
+  C_t[t] = B_t[t] * (1 - exp(-E_t[t]))
+  B_t[t] = B_t[t] - C_t[t]
+}
+
+# 
+matplot( x=years, y=cbind(B_t,C_t), type="l", log="y")
+```
+
+We then set up inputs to EcoState
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# Name taxa (optional, for illustration)
+taxa = "target"
+n_taxa = length(taxa)
+
+# Ecopath-with-EcoSim parameters
+# Diet matrix
+DC_ij = array( 0, dim=c(1,1) )
+PB_i = 0.1
+QB_i = NA
+EE_i = 1
+B_i = 1
+U_i = 0.2
+type_i = "auto"
+which_primary = which(type_i=="auto")
+which_detritus = which(type_i=="detritus")
+V_ij = array( 2, dim=c(1,1) )
+
+# reformat to longform data-frame
+Catch = na.omit(data.frame( "Mass" = C_t, "Year" = years, "Taxon" = taxa ))
+Biomass = data.frame( "Mass" = B_t, "Year" = years, "Taxon" = taxa )
+```
+
+Next, we fit them with `ecostate`
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Settings: specify what parameters to estimate
+fit_delta = taxa   # process errors
+fit_Q = taxa       # catchability coefficient
+fit_B0 = c()      # non-equilibrium initial condition
+fit_B = taxa       # equilibrium biomass
+
+type = "auto"
+
+# Label EwE inputs for each taxon as expected (so users can easily change taxa)
+names(PB_i) = names(QB_i) = names(B_i) = names(EE_i) = names(type) = names(U_i) = taxa
+  dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
+  
+# Run model
+out0 = ecostate( taxa = taxa,
+                years = years,
+                catch = Catch,
+                biomass = Biomass,
+                PB = PB_i,
+                QB = QB_i,
+                DC = DC_ij,
+                B = B_i,
+                EE = EE_i,
+                V = V_ij,
+                type = type,
+                U = U_i,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_delta,
+                fit_B0 = fit_B0,
+                control = ecostate_control( inverse_method = "Standard", 
+                                            trace = 1,
+                                            nlminb_loops = 0,
+                                            getsd = FALSE,
+                                            scale_solver = "simple",
+                                            process_error = "epsilon" ) )
+
+# Estimate logPB
+pars = out0$tmb_inputs$p
+  #pars$Vprime_ij[] = log(91 - 1)
+map = out0$tmb_inputs$map
+#map$logPB_i = factor(1)
+map$Vprime_ij = factor(1)
+
+# Run model
+out = ecostate( taxa = taxa,
+                years = years,
+                catch = Catch,
+                biomass = Biomass,
+                PB = PB_i,
+                QB = QB_i,
+                DC = DC_ij,
+                B = B_i,
+                EE = EE_i,
+                V = V_ij,
+                type = type,
+                U = U_i,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_delta,
+                fit_B0 = fit_B0,
+                control = ecostate_control( inverse_method = "Standard", 
+                                            trace = 1,
+                                            nlminb_loops = 1,
+                                            getsd = TRUE,
+                                            scale_solver = "simple",
+                                            process_error = "epsilon",
+                                            map = map,
+                                            tmb_par = pars ) )
+```
+
+Finally we can compare the estimated and true production function
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+P_t = (out$rep$g_ti[,1] - out$rep$m_ti[,1]) * out$rep$B_ti[,1]
+B_t = out$rep$B_ti[,1]
+
+x = seq(0, K, length=1000)
+y = r * x * (1 - x/K)
+plot( x=x, y=y, type="l", lwd=2, xlim=c(0,2*K), ylim=c(0,2*max(y)) )
+points( x=B_t*exp(out$internal$parhat$logq_i), y=P_t*exp(out$internal$parhat$logq_i) )
+```

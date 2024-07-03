@@ -3,9 +3,10 @@
 #'
 #' @description Calculate how a tracer propagates through consumption.
 #'
+#' @inheritParams ecostate
+#'
 #' @param Q_ij Consumption of each prey i by predator j in units biomass.
 #' @param inverse_method whether to use pseudoinverse or standard inverse
-#' @param which_primary Which taxa have no consumption and are therefore primary producers
 #' @param tracer_i an indicator matrix specifying the traver value
 #'
 #' @details
@@ -30,20 +31,27 @@
 compute_tracer <-
 function( Q_ij,
           inverse_method = c("Penrose_moore", "Standard"),
-          which_primary = which(colSums(Q_ij)==0),
+          type_i,
           tracer_i = rep(1,nrow(Q_ij)) ){
   # Start
   inverse_method = match.arg(inverse_method)
   assertDouble( tracer_i, lower=0, upper=1, len=nrow(Q_ij), any.missing=FALSE )
   
+  # Indicators 
+  which_primary = which( type_i=="auto" )
+  which_detritus = which( type_i=="detritus" )
+  
   # Rescale consumption
   colsums = colSums(Q_ij)
-  B = diag(1/colsums)
+  # diag(vector) doesn't work when length(vector)=1, so using explicit construction
+  #B = diag(1/colsums)
+  B = matrix(0, nrow=length(colsums), ncol=length(colsums))
+  B[cbind(seq_along(colsums),seq_along(colsums))] = 1/colsums
   #inverse_denom = rep(1,nrow(Q_ij)) %*% t(1/colsums)
   Qprime_ij = Q_ij %*% B
 
   # Identify primary producers
-  Qprime_ij[,which_primary] = 0
+  Qprime_ij[,c(which_primary,which_detritus)] = 0
   
   # Solve for trophic level
   if( inverse_method == "Penrose_moore" ){

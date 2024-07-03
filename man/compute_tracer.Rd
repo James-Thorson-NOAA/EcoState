@@ -7,7 +7,7 @@
 compute_tracer(
   Q_ij,
   inverse_method = c("Penrose_moore", "Standard"),
-  which_primary = which(colSums(Q_ij) == 0),
+  type_i,
   tracer_i = rep(1, nrow(Q_ij))
 )
 }
@@ -15,8 +15,6 @@ compute_tracer(
 \item{Q_ij}{Consumption of each prey i by predator j in units biomass.}
 
 \item{inverse_method}{whether to use pseudoinverse or standard inverse}
-
-\item{which_primary}{Which taxa have no consumption and are therefore primary producers}
 
 \item{tracer_i}{an indicator matrix specifying the traver value}
 }

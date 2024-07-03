@@ -4,10 +4,10 @@
 \alias{add_equilibrium}
 \title{Compute equilibrium values}
 \usage{
-add_equilibrium(ecoparams, scale_solver, noB_i)
+add_equilibrium(ecoparams, scale_solver, noB_i, type_i)
 }
 \arguments{
-\item{p}{list of parameters}
+\item{ecoparams}{list of parameters}
 }
 \description{
 Compute equilibrium values

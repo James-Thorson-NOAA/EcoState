@@ -1,10 +1,13 @@
 #' @title 
 #' Compute equilibrium values
 #'
+#' @inheritParams ecostate
+#' @inheritParams ecostate_control
+#'
 #' @description 
 #' Compute equilibrium values
 #'
-#' @param p list of parameters
+#' @param ecoparams list of parameters
 #'
 #' @details
 #' todo
@@ -13,12 +16,17 @@
 add_equilibrium <-
 function( ecoparams,
           scale_solver,
-          noB_i ) { 
+          noB_i,
+          type_i ) { 
   
   # Guidelines
   # no ifelse() or which() for advectors
   # rowSums(C_ij, na.rm=TRUE) seems to break RTMB
   # Don't use n_species, or redefine it locally (using former for now)
+  
+  # Indicators 
+  which_primary = which( type_i=="auto" )
+  which_detritus = which( type_i=="detritus" )
   
   # 
   B_i = exp(ecoparams$logB_i)
@@ -47,7 +55,9 @@ function( ecoparams,
     # 
     diag.a = B_i * PB_i
     diag.a[which(noB_i==1)] = EE_i[which(noB_i==1)] * PB_i[which(noB_i==1)]
-    A = diag(diag.a)
+    # diag(vector) doesn't work when length(vector)=1, so using explicit construction
+    A = matrix(0, nrow=length(B_i), ncol=length(B_i))
+    A[cbind(seq_along(B_i),seq_along(B_i))] = diag.a
     
     #
     QBDC = DC_ij * ( rep(1,length(B_i)) %*% t(QB_i) ) # QB_i[col(DC_ij)] # ( rep(1,n_species) %*% t(QB_i) ) # 
