@@ -23,6 +23,7 @@ knitr::opts_chunk$set(
 
 ```{r setup, echo=TRUE, message=FALSE}
 library(EcoState)
+set.seed(101)
 ```
 
 `ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   I can be used as a surplus production model by treating a single species as a "producer"
@@ -48,6 +49,10 @@ Brate = 0.2
 sigmaE = 0.1
 E0 = 0.01
 
+# Survey
+q = 1
+sigmaQ = 0.1
+
 #
 C_t = E_t = B_t = rep(NA, n_years)
 B_t[1] = B0
@@ -60,9 +65,10 @@ for( t in 2:n_years ){
   C_t[t] = B_t[t] * (1 - exp(-E_t[t]))
   B_t[t] = B_t[t] - C_t[t]
 }
+Bobs_t = q * B_t * exp(sigmaQ * rnorm(n_years))
 
 # 
-matplot( x=years, y=cbind(B_t,C_t), type="l", log="y")
+matplot( x=years, y=cbind(B_t,Bobs_t,C_t), type="l", log="y", lty="solid")
 ```
 
 We then set up inputs to EcoState
@@ -81,13 +87,11 @@ EE_i = 1
 B_i = 1
 U_i = 0.2
 type_i = "auto"
-which_primary = which(type_i=="auto")
-which_detritus = which(type_i=="detritus")
 V_ij = array( 2, dim=c(1,1) )
 
 # reformat to longform data-frame
 Catch = na.omit(data.frame( "Mass" = C_t, "Year" = years, "Taxon" = taxa ))
-Biomass = data.frame( "Mass" = B_t, "Year" = years, "Taxon" = taxa )
+Biomass = data.frame( "Mass" = Bobs_t, "Year" = years, "Taxon" = taxa )
 ```
 
 Next, we fit them with `ecostate`
@@ -161,16 +165,40 @@ out = ecostate( taxa = taxa,
                                             process_error = "epsilon",
                                             map = map,
                                             tmb_par = pars ) )
+
+# print output to terminal
+out
 ```
 
 Finally we can compare the estimated and true production function
 
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
-P_t = (out$rep$g_ti[,1] - out$rep$m_ti[,1]) * out$rep$B_ti[,1]
-B_t = out$rep$B_ti[,1]
+Phat_t = (out$rep$g_ti[,1] - out$rep$m_ti[,1]) * out$rep$B_ti[,1]
+Bhat_t = out$rep$B_ti[,1]
 
 x = seq(0, K, length=1000)
 y = r * x * (1 - x/K)
 plot( x=x, y=y, type="l", lwd=2, xlim=c(0,2*K), ylim=c(0,2*max(y)) )
-points( x=B_t*exp(out$internal$parhat$logq_i), y=P_t*exp(out$internal$parhat$logq_i) )
+points( x=Bhat_t*exp(out$internal$parhat$logq_i), y=Phat_t*exp(out$internal$parhat$logq_i) )
+```
+
+And we can also plot the estimated and true biomass
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Extract estimated biomass
+Bhat_t = as.list(out$sdrep, what="Estimate", report=TRUE )$B_ti
+Bse_t = as.list(out$sdrep, what="Std. Error", report=TRUE )$B_ti
+
+# Reformat to long-form data frame for ggplot
+results = cbind( "Year" = years,
+                 "True" = as.vector(B_t),
+                 "Est" = as.vector(Bhat_t),
+                 "SE" = as.vector(Bse_t) )
+
+# Plot using ggplot
+library(ggplot2)
+ggplot(results) + 
+  geom_line( aes(x=as.numeric(Year), y=True) ) + 
+  geom_line( aes(x=as.numeric(Year), y=Est), linetype="dotted" ) +
+  geom_ribbon( aes(x=as.numeric(Year), ymin=Est-SE, ymax=Est+SE), alpha=0.2)                
 ```
