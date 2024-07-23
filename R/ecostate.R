@@ -186,7 +186,7 @@ function( taxa,
   
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
-  p$logtau_i = ifelse(taxa %in% fit_eps, log(0.001), NA)
+  p$logtau_i = ifelse(taxa %in% fit_eps, log(control$start_tau), NA)
   map$logtau_i = factor(ifelse(taxa %in% fit_eps, seq_len(n_species), NA))
   
   # Catches
@@ -269,8 +269,6 @@ function( taxa,
                   noB_i = noB_i
                   scale_solver = control$scale_solver
                   inverse_method = control$inverse_method
-                  #which_primary = which_primary
-                  #which_detritus = which_detritus
                   type_i = type_i
                   process_error = control$process_error
                   environment()
@@ -279,15 +277,7 @@ function( taxa,
 
   # Load data in environment for function "dBdt"
   data2 = local({
-                  #logPB_i = logPB_i
-                  #logQB_i = logQB_i
-                  #logB_i = logB_i
-                  #DC_ij = DC_ij
-                  #logV_ij = logV_ij
-                  #which_primary = which_primary
-                  #which_detritus = which_detritus
                   type_i = type_i
-                  #EE_i = EE_i
                   n_species = n_species
                   F_type = control$F_type
                   environment()
@@ -423,6 +413,7 @@ function( taxa,
 #'        and large models. Using \code{tmbad.sparse_hessian_compress=1} seems
 #'        to hugely speed up the model-fitting with a large model but results in a small
 #'        decrease in speed for model-fitting with a small model. 
+#' @param start_tau Starting value for the standard deviation of process errors
 #'
 #' @export
 ecostate_control <-
@@ -445,7 +436,8 @@ function( nlminb_loops = 1,
           F_type = c("integrated", "averaged"),
           scale_solver = c("joint", "simple"),
           inverse_method = c("Standard", "Penrose_moore"),
-          tmbad.sparse_hessian_compress = 1 ){
+          tmbad.sparse_hessian_compress = 1,
+          start_tau = 0.001 ){
 
   #
   integration_method = match.arg(integration_method)
@@ -475,7 +467,8 @@ function( nlminb_loops = 1,
     scale_solver = scale_solver,
     inverse_method = inverse_method,
     process_error = process_error,
-    tmbad.sparse_hessian_compress = tmbad.sparse_hessian_compress
+    tmbad.sparse_hessian_compress = tmbad.sparse_hessian_compress,
+    start_tau = start_tau
   ), class = "ecostate_control" )
 }
 

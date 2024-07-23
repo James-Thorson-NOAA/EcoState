@@ -38,7 +38,7 @@ n_years = length(years)
 
 # Name taxa (optional, for illustration)
 taxa = c("Producer_1", "Producer_2", "Consumer_1", "Consumer_2", "Predator_1", "Predator_2")
-n_taxa = length(taxa)
+n_species = length(taxa)
 
 # Ecopath-with-EcoSim parameters
 # Diet matrix
@@ -49,18 +49,18 @@ DC_ij = matrix( c(
   0,    0,      0,     0,     0.2,  0.6,
   0,    0,      0,     0,     0,    0,
   0,    0,      0,     0,     0,    0
-), byrow=TRUE, ncol=n_taxa)
+), byrow=TRUE, ncol=n_species)
 PB_i = c( 90, 0.5, 4, 1, 0.2, 0.1 )         # Reciprocal of mean age according to Polovina-1984 ~= M
 QB_i = c( NA, NA, 10, 4, 3, 1 )
 EE_i = c( 0.9, 0.9, 0.9, 0.9, NA, NA )
 B_i = c( NA, NA, NA, NA, 1, 1 )
-U_i = rep( 0.2, n_taxa )
-B0_i = c( NA, NA, NA, NA, 1, 1 )
+U_i = rep( 0.2, n_species )
 type_i = c( "auto", "detritus", "hetero", "hetero", "hetero", "hetero" )
 which_primary = which(type_i=="auto")
 which_detritus = which(type_i=="detritus")
-V_ij = matrix( 2, nrow=n_taxa, ncol=n_taxa )
+V_ij = matrix( 2, nrow=n_species, ncol=n_species )
 V_ij[,which_primary] = 91
+sigmaB_i = c(0.1, 0.1, 0.02, 0.02, 0.1, 0.1) # Taxa 3-4 crashes solver if sigmaB > 0.02
 
 # Simulation parameters
 sigmaB_i = c(0.1, 0.1, 0.02, 0.02, 0.1, 0.1) # Taxa 3-4 crashes solver if sigmaB > 0.02
@@ -72,37 +72,35 @@ We then loop through years while projecting dynamics, given that the two consume
 # Simulate process errors
 set.seed(101)
 rarray = \(x,dims=dim(x),sd) array( sd*rnorm(prod(dims)), dim=dims )
-epsilon_ti = rarray(dims=c(n_years,n_taxa),sd=1) * outer(rep(1,n_years),sigmaB_i)
+epsilon_ti = rarray(dims=c(n_years,n_species),sd=1) * outer(rep(1,n_years),sigmaB_i)
 
 # Choose method to integrate instantaneous rates for annual dynamics
 n_steps = 10
 project_vars = abm3pc_sys
 
 # Define parameters
-pars = list( logB_i = log(B0_i),
-             logPB_i = log(PB_i),
-             logQB_i = log(QB_i),
-             Vprime_ij = log(V_ij -1),
-             EE_i = EE_i,
-             U_i = U_i,
-             DC_ij = DC_ij,
-             type_i = type_i,
-             noB_i = ifelse(is.na(B0_i),1,0),
-             epsilon_i = rep(0,n_taxa),
-             logF_i = rep(-Inf,n_taxa),
-             which_primary = which_primary,
-             which_detritus = which_detritus,
-             F_type = "integrated",
-             n_species = n_taxa )
-
-# Solve for equilibrium values
-pars_full = add_equilibrium( pars,
+Pars = list( logB_i = log( B_i ), 
+                   logPB_i = log(PB_i),
+                   logQB_i = log(QB_i),
+                   Vprime_ij = log(V_ij - 1),
+                   EE_i = EE_i,
+                   DC_ij = DC_ij,
+                   U_i = U_i,
+                   type_i = type_i,
+                   noB_i = ifelse( is.na(B_i), 1, 0),
+                   epsilon_i = rep(0,n_species),
+                   logF_i = rep(-Inf,n_species),
+                   which_primary = which_primary,
+                   which_detritus = which_detritus,
+                   F_type = "integrated" )
+Pars_full = add_equilibrium( Pars,
                              scale_solver = "joint",
-                             noB_i = ifelse(is.na(pars$logB_i),1,0) )
+                             noB_i = ifelse(is.na(Pars$logB_i),1,0),
+                             type_i = type_i )
 
 # Project forward
-Bobs_ti = Cobs_ti = B_ti = C_ti = array(NA, dim=c(n_years,n_taxa), dimnames=list("Year"=years,"Taxon"=taxa) )
-B_ti[1,] = exp(pars_full$logB_i)
+Bobs_ti = Cobs_ti = B_ti = C_ti = array(NA, dim=c(n_years,n_species), dimnames=list("Year"=years,"Taxon"=taxa) )
+B_ti[1,] = exp(Pars_full$logB_i)
 C_ti[1,] = NA
 
 for( t in seq_along(years)[-1] ){
@@ -110,26 +108,31 @@ for( t in seq_along(years)[-1] ){
   F_t = c( 0, 0, 0, 0, t/n_years*0.2, t/n_years*0.1 )
 
   #
-  pars_t = pars_full
+  pars_t = Pars_full
   pars_t$logF_i = log(F_t)
   pars_t$epsilon_i = epsilon_ti[t,]
   
   # Integrate dynamics annually
+  data2 = local({
+                  n_species = n_species
+                  environment()
+  })
+  environment(dBdt) <- data2
   sim = project_vars(
         f = dBdt,
         a = years[t-1], 
         b = years[t],
         n = n_steps,
         Pars = pars_t,
-        y0 = c( B_ti[t-1,], rep(0,n_taxa) ) )
+        y0 = c( B_ti[t-1,], rep(0,n_species) ) )
   
   # Record results
-  B_ti[t,] = sim$y[nrow(sim$y),seq_len(n_taxa)]
-  C_ti[t,] = sim$y[nrow(sim$y),n_taxa+seq_len(n_taxa)]
+  B_ti[t,] = sim$y[nrow(sim$y),seq_len(n_species)]
+  C_ti[t,] = sim$y[nrow(sim$y),n_species+seq_len(n_species)]
 
   # Simulate measurement errors
-  Bobs_ti[t,] = B_ti[t,] * exp(0.1*rnorm(n_taxa))
-  Cobs_ti[t,] = ifelse(C_ti[t,]==0,NA,C_ti[t,]) * exp(0.1*rnorm(n_taxa))
+  Bobs_ti[t,] = B_ti[t,] * exp(0.1*rnorm(n_species))
+  Cobs_ti[t,] = ifelse(C_ti[t,]==0,NA,C_ti[t,]) * exp(0.1*rnorm(n_species))
 }
 ```
 
@@ -141,16 +144,15 @@ Catch = na.omit(data.frame(expand.grid(dimnames(Cobs_ti)), "Mass"=as.vector(Cobs
 Biomass = na.omit(data.frame(expand.grid(dimnames(Bobs_ti)), "Mass"=as.vector(Bobs_ti)))
 
 # Settings: specify what parameters to estimate
-fit_delta = taxa   # process errors
+fit_eps = c("Producer_1", "Producer_2", "Predator_1", "Predator_2")   # process errors
 fit_Q = c()       # catchability coefficient
-fit_B0 = taxa      # non-equilibrium initial condition
+fit_B0 = c()      # non-equilibrium initial condition
 fit_B = taxa       # equilibrium biomass
 
 # Solving for EE and giving uninformed initial values for biomass
-fittedB_i = exp(pars_full$logB_i)
-#fittedB_i = rep(6, n_taxa)
-fittedEE_i = rep(NA, n_taxa)
-type = factor(c("auto","detritus","hetero","hetero","hetero","hetero"), levels=c("auto","hetero","detritus"))
+fittedB_i = exp(Pars_full$logB_i)
+fittedEE_i = rep(NA, n_species)
+type = c("auto","detritus","hetero","hetero","hetero","hetero")
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
 names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = names(type) = names(U_i) = taxa
@@ -171,21 +173,27 @@ out = ecostate( taxa = taxa,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
-                fit_eps = fit_delta,
+                fit_eps = fit_eps,
                 fit_B0 = fit_B0,
                 control = ecostate_control( inverse_method = "Standard", 
                                             trace = 1,
                                             nlminb_loops = 1,
+                                            tmbad.sparse_hessian_compress = 0,  # Much faster to turn off
                                             getsd = TRUE,
-                                            process_error = "epsilon" ) )
+                                            process_error = "epsilon",
+                                            profile = c("logF_ti","logB_i"),
+                                            start_tau = 0.001 ))   # alpha is faster than epsilon
+
+# print output to terminal
+out
 ```
 
 Finally, we can extract elements from the fitted model, and plot them easily using ggplot2 to compare them with known (simulated) values:
 
 ```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
 # Extract estimated biomass
-Bhat_ti = as.list(out$sdrep, what="Estimate", report=TRUE )$Bhat_ti
-Bse_ti = as.list(out$sdrep, what="Std. Error", report=TRUE )$Bhat_ti
+Bhat_ti = as.list(out$sdrep, what="Estimate", report=TRUE )$B_ti
+Bse_ti = as.list(out$sdrep, what="Std. Error", report=TRUE )$B_ti
 
 # Reformat to long-form data frame for ggplot
 results = expand.grid(dimnames(Bobs_ti))
@@ -214,39 +222,58 @@ out0 = ecostate( taxa = taxa,
                 PB = PB_i,
                 QB = QB_i,
                 DC = DC_ij,
-                B = B0_i,
-                EE = EE_i,
+                B = fittedB_i,
+                EE = fittedEE_i,
+                V = V_ij,
+                type = type,
+                U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
-                fit_eps = fit_delta,
+                fit_eps = fit_eps,
                 fit_B0 = fit_B0,
-                control = ecostate_control( inverse_method = "Standard", # Avoids using Penrose-Moore inverse, which isn't working in RTMB
+                control = ecostate_control( inverse_method = "Standard", 
                                             nlminb_loops = 0,
-                                            getsd = FALSE ) )
+                                            tmbad.sparse_hessian_compress = 0,  
+                                            getsd = FALSE,
+                                            process_error = "epsilon",
+                                            profile = c("logF_ti","logB_i"),
+                                            start_tau = 0.001 ))   # alpha is faster than epsilon
 
 # Change tmb_par
 tmb_par = out0$tmb_inputs$p
-  tmb_par$logV_ij[] = log(1.5)
+  tmb_par$Vprime_ij[,which(type_i!="auto")] = log(1.5 - 1) 
 map = out0$tmb_inputs$map
-  map$logV_ij = factor( array(1,dim=dim(tmb_par$logV_ij)) )
+  map$Vprime_ij = array(NA, dim=dim(tmb_par$Vprime_ij))
+  map$Vprime_ij[,which(type_i!="auto")] = 1
+  map$Vprime_ij = factor(map$Vprime_ij)
 
 # Run model
-out1 = ecostate( taxa = taxa,
+out = ecostate( taxa = taxa,
                 years = years,
                 catch = Catch,
                 biomass = Biomass,
                 PB = PB_i,
                 QB = QB_i,
                 DC = DC_ij,
-                B = B0_i,
-                EE = EE_i,
+                B = fittedB_i,
+                EE = fittedEE_i,
+                V = V_ij,
+                type = type,
+                U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
-                fit_eps = fit_delta,
+                fit_eps = fit_eps,
                 fit_B0 = fit_B0,
-                control = ecostate_control( inverse_method = "Standard", # Avoids using Penrose-Moore inverse, which isn't working in RTMB
+                control = ecostate_control( inverse_method = "Standard", 
                                             nlminb_loops = 1,
-                                            getsd = FALSE,
+                                            tmbad.sparse_hessian_compress = 0,  
+                                            getsd = TRUE,
+                                            process_error = "epsilon",
+                                            profile = c("logF_ti","logB_i"),
+                                            start_tau = 0.001,
                                             tmb_par = tmb_par,
-                                            map = map ) )
+                                            map = map ))   # alpha is faster than epsilon
+
+# print output to terminal
+out
 ```

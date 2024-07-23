@@ -24,7 +24,8 @@ ecostate_control(
   F_type = c("integrated", "averaged"),
   scale_solver = c("joint", "simple"),
   inverse_method = c("Standard", "Penrose_moore"),
-  tmbad.sparse_hessian_compress = 1
+  tmbad.sparse_hessian_compress = 1,
+  start_tau = 0.001
 )
 }
 \arguments{
@@ -85,6 +86,8 @@ and hugely reduces memory use in both small
 and large models. Using \code{tmbad.sparse_hessian_compress=1} seems
 to hugely speed up the model-fitting with a large model but results in a small
 decrease in speed for model-fitting with a small model.}
+
+\item{start_tau}{Starting value for the standard deviation of process errors}
 }
 \description{
 Define a list of control parameters.

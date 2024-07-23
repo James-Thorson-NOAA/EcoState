@@ -6,6 +6,7 @@
 \usage{
 plot_foodweb(
   Q_ij,
+  type_i,
   xtracer_i,
   ytracer_i = rep(1, nrow(Q_ij)),
   B_i = rep(1, nrow(Q_ij)),

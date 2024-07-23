@@ -32,7 +32,7 @@ function( Time,
           what = "dBdt" ){     
 
   # Inputs from function call
-  getAll(Pars)
+  RTMB::getAll(Pars)
   Bt_i = State[1:n_species]
 
   # Inputs from local environment

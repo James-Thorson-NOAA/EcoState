@@ -24,6 +24,7 @@
 #' @export
 plot_foodweb <-
 function( Q_ij,
+          type_i,
           xtracer_i,
           ytracer_i = rep(1,nrow(Q_ij)),
           B_i = rep( 1, nrow(Q_ij)), 
@@ -35,12 +36,14 @@ function( Q_ij,
   if(missing(yloc)){
     yloc = compute_tracer( Q_ij, 
                            inverse_method = "Standard", 
-                           tracer_i = ytracer_i )[1,]
+                           tracer_i = ytracer_i,
+                           type_i = type_i )[1,]
   }
   if(missing(xloc)){
     xloc = compute_tracer( Q_ij, 
                            inverse_method = "Standard", 
-                           tracer_i = xtracer_i )[1,]
+                           tracer_i = xtracer_i,
+                           type_i = type_i )[1,]
   }
 
                 
