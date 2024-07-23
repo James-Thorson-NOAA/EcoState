@@ -22,5 +22,12 @@ Imports:
     ggnetwork,
     intergraph
 Suggests:
-    RTMBode
+    RTMBode,
+    knitr
+Enhances:
+    spict,
+    JABBA
+Remotes:
+    DTUAqua/spict/spict,
+    jabbamodel/JABBA
 RoxygenNote: 7.3.2

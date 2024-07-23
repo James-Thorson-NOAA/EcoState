@@ -4,7 +4,7 @@ author: "James Thorson"
 output: rmarkdown::html_vignette
 #output: rmarkdown::pdf_document
 vignette: >
-  %\VignetteIndexEntry{Demonstrating EcoState via simulation}
+  %\VignetteIndexEntry{EcoState as surplus production model}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,7 +26,7 @@ library(EcoState)
 set.seed(101)
 ```
 
-`ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   I can be used as a surplus production model by treating a single species as a "producer"
+`ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   It can be used as a surplus production model by treating a single species as a "producer"
 
 ## Simulation demonstration
 
@@ -39,9 +39,11 @@ n_years = length(years)
 
 # Biology
 r = 0.2
+#MSY = 100
 K = 1000
 sigmaB = 0.5
 B0 = K * exp(sigmaB*rnorm(1))
+prod_func = c("Schaefer", "Fox")[2]
 
 # Effort dynamics
 Bequil = 0.4 * K
@@ -54,13 +56,16 @@ q = 1
 sigmaQ = 0.1
 
 #
-C_t = E_t = B_t = rep(NA, n_years)
+Pbar_t = P_t = C_t = E_t = B_t = rep(NA, n_years)
 B_t[1] = B0
 E_t[1] = E0
 
 #
 for( t in 2:n_years ){
-  B_t[t] = B_t[t-1] + r * B_t[t-1] * (1 - B_t[t-1]/K) * exp(sigmaB*rnorm(1))
+  if(prod_func=="Scaefer") Pbar_t[t] = B_t[t-1] + r * B_t[t-1] * (1 - B_t[t-1]/K)
+  if(prod_func=="Fox") Pbar_t[t] = r * B_t[t-1] * log(K / B_t[t-1])
+  P_t[t] = Pbar_t[t] * exp(sigmaB*rnorm(1))
+  B_t[t] = B_t[t-1] + P_t[t]
   E_t[t] = E_t[t-1] * (B_t[t-1]/Bequil)^Brate * exp(sigmaE*rnorm(1))
   C_t[t] = B_t[t] * (1 - exp(-E_t[t]))
   B_t[t] = B_t[t] - C_t[t]
@@ -103,6 +108,7 @@ fit_Q = taxa       # catchability coefficient
 fit_B0 = c()      # non-equilibrium initial condition
 fit_B = taxa       # equilibrium biomass
 
+# Treat it as an autotroph (given there's no prey to consume)
 type = "auto"
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
@@ -126,18 +132,12 @@ out0 = ecostate( taxa = taxa,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
-                control = ecostate_control( inverse_method = "Standard", 
-                                            trace = 1,
-                                            nlminb_loops = 0,
-                                            getsd = FALSE,
-                                            scale_solver = "simple",
-                                            process_error = "epsilon" ) )
+                control = ecostate_control( nlminb_loops = 0,
+                                            getsd = FALSE ) )
 
 # Estimate logPB
 pars = out0$tmb_inputs$p
-  #pars$Vprime_ij[] = log(91 - 1)
 map = out0$tmb_inputs$map
-#map$logPB_i = factor(1)
 map$Vprime_ij = factor(1)
 
 # Run model
@@ -157,13 +157,7 @@ out = ecostate( taxa = taxa,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
-                control = ecostate_control( inverse_method = "Standard", 
-                                            trace = 1,
-                                            nlminb_loops = 1,
-                                            getsd = TRUE,
-                                            scale_solver = "simple",
-                                            process_error = "epsilon",
-                                            map = map,
+                control = ecostate_control( map = map,
                                             tmb_par = pars ) )
 
 # print output to terminal
@@ -173,13 +167,45 @@ out
 Finally we can compare the estimated and true production function
 
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
-Phat_t = (out$rep$g_ti[,1] - out$rep$m_ti[,1]) * out$rep$B_ti[,1]
-Bhat_t = out$rep$B_ti[,1]
+# Define function to calculate annualized production
+prod_fun = function( biomass, Vprime, logPB ){
+  p = out$internal$parhat
+  if(!missing(Vprime)) p$Vprime_ij[] = Vprime
+  if(!missing(logPB)) p$logPB_i[] = logPB
+  p = add_equilibrium( p,
+                       scale_solver = out$internal$control$scale_solver,
+                       noB_i = ifelse(is.na(p$logB_i),1,0),
+                       type_i = type_i )
+  p$logF_i = rep(log(0), n_taxa)
+  p$epsilon_i = rep(0, n_taxa)
+  data2 = local({
+                  type_i = type_i
+                  n_species = n_taxa
+                  F_type = out$internal$control$F_type
+                  environment()
+  })
+  environment(dBdt) <- data2
+  proj = abm3pc_sys(
+        f = dBdt,
+        a = 0, 
+        b = 1,
+        n = out$internal$control$n_steps,
+        Pars = p,
+        y0 = c(biomass, 0) )
+  return( rev(proj$y[,1])[1] - biomass )
+}
 
-x = seq(0, K, length=1000)
-y = r * x * (1 - x/K)
-plot( x=x, y=y, type="l", lwd=2, xlim=c(0,2*K), ylim=c(0,2*max(y)) )
-points( x=Bhat_t*exp(out$internal$parhat$logq_i), y=Phat_t*exp(out$internal$parhat$logq_i) )
+# Calculate predicted and true curves
+x = seq(0, 2*K, length=1000)[-1]
+if(prod_func=="Scaefer") y = r * x * (1 - x/K)
+if(prod_func=="Fox") y = r * x * log(K/x)
+yhat = sapply( x, FUN=prod_fun, 
+               Vprime = out$internal$parhat$Vprime_ij, 
+               logPB = out$internal$parhat$logPB_i )
+
+# Plot them
+plot( x=x, y=y, type="l", xlim=c(0,2*K), ylim=c(0,2*max(y)), lwd=3 )
+lines( x=x, y=yhat, lwd=3, col="red" )    # *exp(out$internal$parhat$logq_i)
 ```
 
 And we can also plot the estimated and true biomass
@@ -192,13 +218,69 @@ Bse_t = as.list(out$sdrep, what="Std. Error", report=TRUE )$B_ti
 # Reformat to long-form data frame for ggplot
 results = cbind( "Year" = years,
                  "True" = as.vector(B_t),
+                 "Obs" = as.vector(Bobs_t),
                  "Est" = as.vector(Bhat_t),
                  "SE" = as.vector(Bse_t) )
 
 # Plot using ggplot
 library(ggplot2)
 ggplot(results) + 
-  geom_line( aes(x=as.numeric(Year), y=True) ) + 
+  geom_line( aes(x=as.numeric(Year), y=True), colour="red" ) + 
+  geom_line( aes(x=as.numeric(Year), y=Obs) ) + 
   geom_line( aes(x=as.numeric(Year), y=Est), linetype="dotted" ) +
-  geom_ribbon( aes(x=as.numeric(Year), ymin=Est-SE, ymax=Est+SE), alpha=0.2)                
+  geom_ribbon( aes(x=as.numeric(Year), ymin=Est-1.96*SE, ymax=Est+1.96*SE), alpha=0.2)                
+```
+
+## Comparison with other models
+
+We can compare this with a state-space production model in continuous time (SPiCT):
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+library(spict)
+
+# Format for SPiCT
+datalist = list(
+  obsC = C_t[-1],
+  timeC = years[-1],
+  obsI = Bobs_t,
+  timeI = years              
+)
+
+# Fit and plot
+res <- fit.spict(datalist)
+plotspict.biomass(res)
+```
+
+Similarly, we can compare it with Just Another Bayesian Biomass Assessment (JABBA):
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+library(JABBA)
+
+# Compile JABBA JAGS model and input object
+jbinput = build_jabba( catch = data.frame(Year=years, Total=C_t)[-1,],
+                       cpue = data.frame(Year=years, Index=Bobs_t)[-1,],
+                       se = data.frame(Year=years, Index=0.1)[-1,],
+                       assessment = "target",
+                       scenario = "TestRun",
+                       model.type = "Schaefer",
+                       sigma.est = FALSE,
+                       fixed.obsE = 0.1 )
+
+# Fit JABBA (here mostly default value - careful)
+bet1 = fit_jabba(jbinput, quickmcmc=TRUE)
+
+# Make individual plots
+jbplot_cpuefits(bet1)
+```
+
+Comparing the two shows that SPICT and EcoState both have errors in estimating population scale, presumably due to mis-specifying the production function: 
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Compare estimates
+knitr::kable(rbind(
+  "True" = c("q" = q, "K"=K),
+  "EcoState" = exp(out$opt$par[c('logq_i','logB_i')]),
+  "SPiCT" = res$value[c('q','K')],
+  "JABBA" = bet1$pars[c('q','K'),'Median']
+), digits=3)
 ```
