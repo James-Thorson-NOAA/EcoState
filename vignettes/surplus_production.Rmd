@@ -164,16 +164,18 @@ out = ecostate( taxa = taxa,
 out
 ```
 
-Finally we can compare the estimated and true production function
+Finally we can calculate a function that calculates the annualized surplus production
 
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 # Define function to calculate annualized production
-prod_fun = function( biomass, Vprime, logPB ){
-  p = out$internal$parhat
+prod_fun = function( biomass, Vprime, logPB, taxon, ecofit ){
+  p = ecofit$internal$parhat
+  n_taxa = length(ecofit$internal$taxa)
   if(!missing(Vprime)) p$Vprime_ij[] = Vprime
   if(!missing(logPB)) p$logPB_i[] = logPB
+  if(missing(taxon)) taxon = ecofit$internal$taxa[n_taxa]
   p = add_equilibrium( p,
-                       scale_solver = out$internal$control$scale_solver,
+                       scale_solver = ecofit$internal$control$scale_solver,
                        noB_i = ifelse(is.na(p$logB_i),1,0),
                        type_i = type_i )
   p$logF_i = rep(log(0), n_taxa)
@@ -181,30 +183,62 @@ prod_fun = function( biomass, Vprime, logPB ){
   data2 = local({
                   type_i = type_i
                   n_species = n_taxa
-                  F_type = out$internal$control$F_type
+                  F_type = ecofit$internal$control$F_type
                   environment()
   })
   environment(dBdt) <- data2
+  State = c( ecofit$rep$out_initial$B_i, rep(0,n_taxa) )
+  State[match(taxon,ecofit$internal$taxa)] = biomass
+  #dBdt(Time=0, State=State, Pars=p)
   proj = abm3pc_sys(
         f = dBdt,
         a = 0, 
         b = 1,
-        n = out$internal$control$n_steps,
+        n = ecofit$internal$control$n_steps,
         Pars = p,
-        y0 = c(biomass, 0) )
-  return( rev(proj$y[,1])[1] - biomass )
+        y0 = State )
+  biomass1 = rev( proj$y[,match(taxon,ecofit$internal$taxa)] )[1]
+  return( biomass1 - biomass )
 }
+```
 
+We then use that function to compare the exact and an approximation that uses a first-order Euler approximation:
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 # Calculate predicted and true curves
 x = seq(0, 2*K, length=1000)[-1]
 if(prod_func=="Scaefer") y = r * x * (1 - x/K)
 if(prod_func=="Fox") y = r * x * log(K/x)
-yhat = sapply( x, FUN=prod_fun, 
+yhat = sapply( x, FUN=prod_fun, ecofit=out,
                Vprime = out$internal$parhat$Vprime_ij, 
                logPB = out$internal$parhat$logPB_i )
 
+# Solve for Bmsy / B0 in production function
+dBdt_approx = function(b, x, p){
+  # dBdt for single autotroph (not annualized)
+  dBdt_expr = expression(b * p * (1-b) / (x - 1 + b))
+  # Solve for d/db dBdt = 0 as min_b((d/db dBdt)^2)
+  #eval( D(dBdt,"b") )^2
+  # OR:  -dBdt
+  eval(dBdt_expr)
+}
+phi1 = optimize( dBdt_approx, lower=0.01, upper=0.99, maximum=TRUE,
+                x = 1+exp(out$internal$parhat[['Vprime_ij']]), 
+                p = exp(out$internal$parhat[['logPB_i']]) )$maximum
+# Empirical
+phi2 = x[which.max(yhat)] / 1000 
+#
+msy1 = exp(out$internal$parhat$logB_i) * dBdt_approx(phi1, 
+                x = 1+exp(out$internal$parhat[['Vprime_ij']]), 
+                p = exp(out$internal$parhat[['logPB_i']]) )
+#
+msy2 = yhat[which.max(yhat)]
+# 
+true_msy = y[which.max(y)]
+
 # Plot them
-plot( x=x, y=y, type="l", xlim=c(0,2*K), ylim=c(0,2*max(y)), lwd=3 )
+plot( x=x, y=y, type="l", xlim=c(0,2*K), ylim=c(0,2*max(y)), lwd=3, 
+      xlab="Biomass", ylab="Annual surplus production" )
 lines( x=x, y=yhat, lwd=3, col="red" )    # *exp(out$internal$parhat$logq_i)
 ```
 
@@ -229,6 +263,101 @@ ggplot(results) +
   geom_line( aes(x=as.numeric(Year), y=Obs) ) + 
   geom_line( aes(x=as.numeric(Year), y=Est), linetype="dotted" ) +
   geom_ribbon( aes(x=as.numeric(Year), ymin=Est-1.96*SE, ymax=Est+1.96*SE), alpha=0.2)                
+```
+
+## Bivariate production model
+
+Similarly, we could fit a two-species production model to these same data:
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Inputs
+taxa = c( "prey", "target" )
+n_taxa = length(taxa)
+PB_i = c( 5, 0.1 )
+QB_i = c( NA, 0.5 )
+DC_ij = matrix( c(0,0,1,0), nrow=2 )
+V_ij = matrix( 2, nrow=2, ncol=2 )
+U_i = c( 0.2, 0.2 )
+type = c( "auto", "hetero" )
+EE_i = c( 1, NA ) 
+B_i = c( NA, 1 )
+
+# Settings: specify what parameters to estimate
+fit_delta = "target"   # process errors
+fit_Q = "target"       # catchability coefficient
+fit_B0 = c()      # non-equilibrium initial condition
+fit_B = "target"       # equilibrium biomass
+
+# Label EwE inputs for each taxon as expected (so users can easily change taxa)
+names(PB_i) = names(QB_i) = names(B_i) = names(EE_i) = names(type) = names(U_i) = taxa
+  dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
+  
+# Run model
+out0 = ecostate( taxa = taxa,
+                years = years,
+                catch = Catch,
+                biomass = Biomass,
+                PB = PB_i,
+                QB = QB_i,
+                DC = DC_ij,
+                B = B_i,
+                EE = EE_i,
+                V = V_ij,
+                type = type,
+                U = U_i,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_delta,
+                fit_B0 = fit_B0,
+                control = ecostate_control( nlminb_loops = 0,
+                                            getsd = FALSE ) )
+
+# Estimate logPB
+pars = out0$tmb_inputs$p
+map = out0$tmb_inputs$map
+#map$Vprime_ij = factor( rep(1,n_taxa) %o% ifelse(type=="auto",NA,1) )
+
+# Run model
+out_bivar = ecostate( taxa = taxa,
+                years = years,
+                catch = Catch,
+                biomass = Biomass,
+                PB = PB_i,
+                QB = QB_i,
+                DC = DC_ij,
+                B = B_i,
+                EE = EE_i,
+                V = V_ij,
+                type = type,
+                U = U_i,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_delta,
+                fit_B0 = fit_B0,
+                control = ecostate_control( map = map,
+                                            tmb_par = pars ) )
+```
+
+We can then calculate and visualize how this changes the production function:
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Calculate annualized production function
+yhat_bivar = sapply( x, FUN=prod_fun, ecofit=out_bivar, taxon="target",
+               Vprime = out_bivar$internal$parhat$Vprime_ij, 
+               logPB = out_bivar$internal$parhat$logPB_i )
+
+# Empirical
+phi_bivar = x[which.max(yhat_bivar)] / 1000 
+msy_bivar = yhat_bivar[which.max(yhat_bivar)]
+
+
+# Plot them
+plot( x=x, y=y, type="l", xlim=c(0,2*K), ylim=c(0,2*max(y)), lwd=3, 
+      xlab="Biomass", ylab="Annual surplus production" )
+matplot( x=x, y=cbind(yhat,yhat_bivar), lwd=3, col=c("red","blue"), 
+         type="l", add=TRUE )  
+legend( "topright", fill=c("black","red","blue"), 
+        legend=c("True","1-species","2-species"), bty="n")
 ```
 
 ## Comparison with other models
@@ -278,9 +407,10 @@ Comparing the two shows that SPICT and EcoState both have errors in estimating p
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 # Compare estimates
 knitr::kable(rbind(
-  "True" = c("q" = q, "K"=K),
-  "EcoState" = exp(out$opt$par[c('logq_i','logB_i')]),
-  "SPiCT" = res$value[c('q','K')],
-  "JABBA" = bet1$pars[c('q','K'),'Median']
+  "True" = c("q" = q, "K"=K, "MSY"=true_msy),
+  "EcoState 1-species" = c(exp(out$opt$par[c('logq_i','logB_i')]),msy2),
+  "EcoState 2-species" = c(exp(out_bivar$opt$par[c('logq_i','logB_i')]),msy_bivar),
+  "SPiCT" = c(res$value[c('q','K','MSY')]),
+  "JABBA" = c(bet1$pars[c('q','K'),'Median'],bet1$estimates['MSY','mu'])
 ), digits=3)
 ```

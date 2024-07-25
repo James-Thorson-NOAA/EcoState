@@ -180,9 +180,9 @@ out = ecostate( taxa = taxa,
                                             nlminb_loops = 1,
                                             tmbad.sparse_hessian_compress = 0,  # Much faster to turn off
                                             getsd = TRUE,
-                                            process_error = "epsilon",
+                                            process_error = "epsilon",  # alpha is faster than epsilon
                                             profile = c("logF_ti","logB_i"),
-                                            start_tau = 0.001 ))   # alpha is faster than epsilon
+                                            start_tau = 0.001 ))   
 
 # print output to terminal
 out
@@ -210,6 +210,8 @@ ggplot(results) +
   geom_line( aes(x=as.numeric(Year), y=Est), linetype="dotted" ) +
   geom_ribbon( aes(x=as.numeric(Year), ymin=Est-SE, ymax=Est+SE), alpha=0.2)                
 ```
+
+## Advanced:  estimating vulnerability parameters
 
 We can also explore estimating additional parameters.  Here, we explore estimating vulnerability:
 
