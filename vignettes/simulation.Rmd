@@ -37,33 +37,30 @@ years = 1981:2020
 n_years = length(years)
 
 # Name taxa (optional, for illustration)
-taxa = c("Producer_1", "Producer_2", "Consumer_1", "Consumer_2", "Predator_1", "Predator_2")
+taxa = c("Consumer_1", "Consumer_2", "Predator_1", "Predator_2", "Producer", "Detritus")
 n_species = length(taxa)
 
 # Ecopath-with-EcoSim parameters
 # Diet matrix
 DC_ij = matrix( c(
-  0,    0,      0.9,   0.3,   0,    0,
-  0,    0,      0.1,   0.7,   0,    0,
-  0,    0,      0,     0,     0.8,  0.4,
-  0,    0,      0,     0,     0.2,  0.6,
-  0,    0,      0,     0,     0,    0,
-  0,    0,      0,     0,     0,    0
+  0,     0,     0.8,  0.4,  0,   0,
+  0,     0,     0.2,  0.6,  0,   0,
+  0,     0,     0,    0,    0,   0,
+  0,     0,     0,    0,    0,   0,
+  0.9,   0.3,   0,    0,    0,   0,
+  0.1,   0.7,   0,    0,    0,   0
 ), byrow=TRUE, ncol=n_species)
-PB_i = c( 90, 0.5, 4, 1, 0.2, 0.1 )         # Reciprocal of mean age according to Polovina-1984 ~= M
-QB_i = c( NA, NA, 10, 4, 3, 1 )
-EE_i = c( 0.9, 0.9, 0.9, 0.9, NA, NA )
-B_i = c( NA, NA, NA, NA, 1, 1 )
+PB_i = c( 4, 1, 0.2, 0.1, 90, 0.5 )         # Reciprocal of mean age according to Polovina-1984 ~= M
+QB_i = c( 10, 4, 3, 1, NA, NA )
+EE_i = c( 0.9, 0.9, NA, NA, 0.9, 0.9 )
+B_i = c( NA, NA, 1, 1, NA, NA )
 U_i = rep( 0.2, n_species )
-type_i = c( "auto", "detritus", "hetero", "hetero", "hetero", "hetero" )
+type_i = c( "hetero", "hetero", "hetero", "hetero", "auto", "detritus" )
 which_primary = which(type_i=="auto")
 which_detritus = which(type_i=="detritus")
 V_ij = matrix( 2, nrow=n_species, ncol=n_species )
 V_ij[,which_primary] = 91
-sigmaB_i = c(0.1, 0.1, 0.02, 0.02, 0.1, 0.1) # Taxa 3-4 crashes solver if sigmaB > 0.02
-
-# Simulation parameters
-sigmaB_i = c(0.1, 0.1, 0.02, 0.02, 0.1, 0.1) # Taxa 3-4 crashes solver if sigmaB > 0.02
+sigmaB_i = c(0.02, 0.02, 0.1, 0.1, 0.1, 0.1) # Taxa 1-2 crashes solver if sigmaB > 0.02
 ```
 
 We then loop through years while projecting dynamics, given that the two consumers are subject to increased fishing over time:
@@ -105,7 +102,7 @@ C_ti[1,] = NA
 
 for( t in seq_along(years)[-1] ){
   # Fishing mortality ramps up for two predators
-  F_t = c( 0, 0, 0, 0, t/n_years*0.2, t/n_years*0.1 )
+  F_t = c( 0, 0, t/n_years*0.2, t/n_years*0.1, 0, 0 )
 
   #
   pars_t = Pars_full
@@ -144,7 +141,7 @@ Catch = na.omit(data.frame(expand.grid(dimnames(Cobs_ti)), "Mass"=as.vector(Cobs
 Biomass = na.omit(data.frame(expand.grid(dimnames(Bobs_ti)), "Mass"=as.vector(Bobs_ti)))
 
 # Settings: specify what parameters to estimate
-fit_eps = c("Producer_1", "Producer_2", "Predator_1", "Predator_2")   # process errors
+fit_eps = c("Producer", "Detritus", "Predator_1", "Predator_2")   # process errors
 fit_Q = c()       # catchability coefficient
 fit_B0 = c()      # non-equilibrium initial condition
 fit_B = taxa       # equilibrium biomass
@@ -152,10 +149,9 @@ fit_B = taxa       # equilibrium biomass
 # Solving for EE and giving uninformed initial values for biomass
 fittedB_i = exp(Pars_full$logB_i)
 fittedEE_i = rep(NA, n_species)
-type = c("auto","detritus","hetero","hetero","hetero","hetero")
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
-names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = names(type) = names(U_i) = taxa
+names(PB_i) = names(QB_i) = names(fittedB_i) = names(fittedEE_i) = names(type_i) = names(U_i) = taxa
   dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
   
 # Run model
@@ -169,7 +165,7 @@ out = ecostate( taxa = taxa,
                 B = fittedB_i,
                 EE = fittedEE_i,
                 V = V_ij,
-                type = type,
+                type = type_i,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
@@ -211,6 +207,91 @@ ggplot(results) +
   geom_ribbon( aes(x=as.numeric(Year), ymin=Est-SE, ymax=Est+SE), alpha=0.2)                
 ```
 
+## Comparison with Rpath
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+library(Rpath)
+
+# Rpath needs types in ascending order (EcoState doesn't care)
+types  <- c( 0, 0, 0, 0, 1, 2, 3 )
+groups <- c( taxa, "fishery" )
+stgroups = rep(NA, length(groups) )
+REco.params <- create.rpath.params(group = groups, type = types, stgroup = stgroups)
+
+# Fill in biomass
+#REco.params$model$Biomass = c( exp(Pars_full$logB_i), NA )
+REco.params$model$Biomass = c( B_i, NA )
+REco.params$model$EE = c( ifelse(type_i=="detritus",NA,EE_i), NA )
+REco.params$model$PB = c( PB_i, NA )
+REco.params$model$QB = c( QB_i, NA )
+
+#Biomass accumulation and unassimilated consumption
+REco.params$model$BioAcc = c( rep(0,length(taxa)), NA )
+REco.params$model$Unassim = c( ifelse(type_i=="hetero",0.2,0), NA )
+
+#Detrital Fate
+REco.params$model$Detritus = c( ifelse(type_i=="detritus",0,1), 0 )
+REco.params$model$fishery = c( rep(0,length(taxa)), NA )
+REco.params$model$fishery.disc = c( rep(0,length(taxa)), NA )
+
+# Starting catches
+#REco.params$model$fishery[3:4] = C_ti[2,3:4] / 1000
+
+# Diet
+for(j in 1:5) REco.params$diet[seq_along(taxa),j+1] = DC_ij[,j]
+REco.params$diet[seq_along(taxa),2] = DC_ij[,1]
+
+# Balance using Ecopath equations
+check.rpath.params( REco.params)
+REco <- rpath(REco.params, eco.name = 'R Ecosystem')
+```
+
+We can then simulate forward in time using Rpath:
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Create simulation object
+REco.sim <- rsim.scenario(REco, REco.params, years = 1:40)
+
+#
+REco.sim = adjust.fishing( Rsim.scenario=REco.sim, 
+                           parameter='ForcedFRate', 
+                           group = 'Predator_1', # Group is which species to apply
+                           sim.year = 1:40, 
+                           sim.month = 0, 
+                           value = (1:40/40)*0.2 )
+REco.sim = adjust.fishing( Rsim.scenario=REco.sim, 
+                           parameter='ForcedFRate', 
+                           group = 'Predator_2', # Group is which species to apply
+                           sim.year = 1:40, 
+                           sim.month = 0, 
+                           value = (1:40/40)*0.1 )
+
+# Match vulnerability for self-limitation in Producers
+REco.sim$params$VV[which(REco.sim$params$PreyFrom==0 & REco.sim$params$PreyTo==5)] = 91
+
+# 
+REco.run1 <- rsim.run(REco.sim, method = 'RK4', years = 1:40)
+```
+
+Comparing the scenario forecasted with Rpath against the simulated time-series, we see that the two generally match but that process errors result in additional variation that is not captured in Rpath.  Although it is not shown here, removing process errors (i.e., fixing `sigmaB_i[] = 0`) results in time-series that match very closely.  
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Calculate annual simulated catch
+Year = rep( years, each=12)
+Bsim_ti = apply( REco.run1$out_Biomass[,-1], MARGIN=2, FUN=\(x) tapply(x,INDEX=Year,FUN=mean) )
+
+#
+par(mfrow=c(2,1), mar=c(3,3,1,1), mgp=c(2,0.5,0) )
+matplot( x=years, y=Bsim_ti / outer(rep(1,n_years),Bsim_ti[1,]), 
+         type="l", lwd=3, lty="solid", col=rainbow(n_species), log="y",
+         ylab="Relative biomass (Rpath)", xlab="Year" )
+Brel_ti = B_ti / outer(rep(1,n_years),B_ti[1,])
+matplot( x=years, y=B_ti / outer(rep(1,n_years),B_ti[1,]), 
+         type="l", lwd=3, lty="solid", col=rainbow(n_species), log="y",
+         ylab="Relative biomass (Simulated)", xlab="Year" )
+legend("bottomleft", fill=rainbow(n_species), legend=taxa, ncol=2, bty="n")
+```
+
 ## Advanced:  estimating vulnerability parameters
 
 We can also explore estimating additional parameters.  Here, we explore estimating vulnerability:
@@ -227,7 +308,7 @@ out0 = ecostate( taxa = taxa,
                 B = fittedB_i,
                 EE = fittedEE_i,
                 V = V_ij,
-                type = type,
+                type = type_i,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
@@ -260,7 +341,7 @@ out = ecostate( taxa = taxa,
                 B = fittedB_i,
                 EE = fittedEE_i,
                 V = V_ij,
-                type = type,
+                type = type_i,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,

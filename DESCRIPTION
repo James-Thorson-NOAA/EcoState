@@ -26,8 +26,10 @@ Suggests:
     knitr
 Enhances:
     spict,
-    JABBA
+    JABBA,
+    Rpath
 Remotes:
     DTUAqua/spict/spict,
-    jabbamodel/JABBA
+    jabbamodel/JABBA,
+    NOAA-EDAB/Rpath
 RoxygenNote: 7.3.2
