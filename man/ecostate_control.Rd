@@ -11,7 +11,7 @@ ecostate_control(
   iter.max = 1000,
   getsd = TRUE,
   silent = getOption("ecostate.silent", TRUE),
-  trace = getOption("ecostate.trace", 1),
+  trace = getOption("ecostate.trace", 0),
   verbose = getOption("ecostate.verbose", FALSE),
   profile = c("logF_ti"),
   random = c("epsilon_ti", "alpha_ti"),
@@ -29,31 +29,31 @@ ecostate_control(
 )
 }
 \arguments{
-\item{nlminb_loops}{Integer number of times to call [stats::nlminb()].}
+\item{nlminb_loops}{Integer number of times to call \code{\link[stats:nlminb]{stats::nlminb()}}.}
 
 \item{newton_loops}{Integer number of Newton steps to do after running
-[stats::nlminb()].}
+\code{\link[stats:nlminb]{stats::nlminb()}}.}
 
 \item{eval.max}{Maximum number of evaluations of the objective function
-allowed. Passed to `control` in [stats::nlminb()].}
+allowed. Passed to \code{control} in \code{\link[stats:nlminb]{stats::nlminb()}}.}
 
-\item{iter.max}{Maximum number of iterations allowed. Passed to `control` in
-[stats::nlminb()].}
+\item{iter.max}{Maximum number of iterations allowed. Passed to \code{control} in
+\code{\link[stats:nlminb]{stats::nlminb()}}.}
 
-\item{getsd}{Boolean indicating whether to call [TMB::sdreport()]}
+\item{getsd}{Boolean indicating whether to call \code{\link[TMB:sdreport]{TMB::sdreport()}}}
 
 \item{silent}{Disable terminal output for inner optimizer?}
 
-\item{trace}{Parameter values are printed every `trace` iteration
+\item{trace}{Parameter values are printed every \code{trace} iteration
 for the outer optimizer. Passed to
-`control` in [stats::nlminb()].}
+\code{control} in \code{\link[stats:nlminb]{stats::nlminb()}}.}
 
 \item{verbose}{Output additional messages about model steps during fitting?}
 
 \item{tmb_par}{list of parameters for starting values, with shape identical
-to `tinyVAST(...)$internal$parlist`}
+to \code{tinyVAST(...)$internal$parlist}}
 
-\item{map}{list of mapping values, passed to [RTMB::MakeADFun]}
+\item{map}{list of mapping values, passed to \link[RTMB:TMB-interface]{RTMB::MakeADFun}}
 
 \item{getJointPrecision}{whether to get the joint precision matrix.  Passed
 to \code{\link[TMB]{sdreport}}.}
@@ -61,27 +61,27 @@ to \code{\link[TMB]{sdreport}}.}
 \item{integration_method}{What numerical integration method to use. \code{"ABM"}
 uses a native-R versions of Adam-Bashford, code{"RK4"} uses a native-R
 version of Runge-Kutta-4, and code{"ode23"} uses a native-R
-version of adaptive Runge-Kutta-23, 
+version of adaptive Runge-Kutta-23,
 where all are adapted from \code{pracma} functions.
 \code{"rk4"} and \code{lsoda} use those methods
 from \code{deSolve::ode} as implemented by \code{RTMBode::ode}}
 
 \item{process_error}{Whether to include process error as a continuous rate
-(i.e., an "innovation" parameterization, \code{process_error="epsilon"}) 
+(i.e., an "innovation" parameterization, \code{process_error="epsilon"})
 or as a discrete difference between expected
-and predicted biomass (i.e., a "state-space" parameterization),  
+and predicted biomass (i.e., a "state-space" parameterization),
 \code{process_error="alpha"}The
 former is more interpretable, whereas the latter is much more computationally
 efficient.}
 
 \item{F_type}{whether to integrate catches along with biomass (\code{"integrated"})
-or calculate catches from the Baranov catch equation applied to average 
+or calculate catches from the Baranov catch equation applied to average
 biomass (\code{"averaged"})}
 
-\item{tmbad.sparse_hessian_compress}{passed to [TMB::config()], and enabling 
+\item{tmbad.sparse_hessian_compress}{passed to \code{\link[TMB:config]{TMB::config()}}, and enabling
 an experimental feature to save memory when first computing the inner
 Hessian matrix.  Using \code{tmbad.sparse_hessian_compress=1} seems
-to have no effect on the MLE (although users should probably confirm this), 
+to have no effect on the MLE (although users should probably confirm this),
 and hugely reduces memory use in both small
 and large models. Using \code{tmbad.sparse_hessian_compress=1} seems
 to hugely speed up the model-fitting with a large model but results in a small

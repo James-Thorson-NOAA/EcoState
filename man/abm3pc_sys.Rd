@@ -22,7 +22,7 @@ defined as a function R \times R^m \rightarrow R^m, where m is the number of equ
 Third-order Adams-Bashford-Moulton predictor-corrector method.
 }
 \details{
-Combined Adams-Bashford and Adams-Moulton (or: multi-step) method of third order 
+Combined Adams-Bashford and Adams-Moulton (or: multi-step) method of third order
 with corrections according to the predictor-corrector approach.
 Copied from pracma under GPL-3, with small modifications to work with RTMB
 }

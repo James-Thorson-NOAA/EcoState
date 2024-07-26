@@ -46,10 +46,10 @@ ratio of consumption to biomass for each taxon}
 \item{B}{numeric-vector with names matching \code{taxa}, providing the
 starting (or fixed) value for equilibrium biomass for each taxon}
 
-\item{DC}{numeric-matrix with rownames and colnamesmatching \code{taxa}, 
+\item{DC}{numeric-matrix with rownames and colnamesmatching \code{taxa},
 where each column provides the diet proportion for a given predator}
 
-\item{V}{numeric-matrix with rownames and colnamesmatching \code{taxa}, 
+\item{V}{numeric-matrix with rownames and colnamesmatching \code{taxa},
 where each element gives the vulnerability parameter for a given
 interaction.}
 
@@ -58,7 +58,7 @@ elements \code{c("auto","hetero","detritus")},
 indicating whether each taxon is a primary producer, consumer/predator, or
 detritus, respectively.}
 
-\item{U}{numeric-vector with names matching \code{taxa}, providing the 
+\item{U}{numeric-vector with names matching \code{taxa}, providing the
 proportion of consumption that is unassimilated and therefore
 exported to detritus}
 
@@ -74,7 +74,7 @@ to equilibrium biomass is estimated as a fixed effect}
 \item{fit_eps}{Character-vector listing \code{taxa} for which the
 model should estimate annual process errors in dB/dt}
 
-\item{control}{Output from [ecostate_control()], used to define user
+\item{control}{Output from \code{\link[=ecostate_control]{ecostate_control()}}, used to define user
 settings.}
 }
 \description{

@@ -32,4 +32,6 @@ Remotes:
     DTUAqua/spict/spict,
     jabbamodel/JABBA,
     NOAA-EDAB/Rpath
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+LazyData: true

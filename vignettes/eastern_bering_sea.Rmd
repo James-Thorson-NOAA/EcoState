@@ -1,0 +1,113 @@
+---
+title: "Eastern Bering Sea case study"
+author: "James Thorson"
+output: rmarkdown::html_vignette
+#output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{Eastern Bering Sea case study}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+# Install locally
+#  devtools::install_local( R'(C:\Users\James.Thorson\Desktop\Git\ecostate)', force=TRUE )
+#  devtools::install_github( 'James-Thorson-NOAA/ecostate', force=TRUE )
+# Build
+# setwd(R'(C:\Users\James.Thorson\Desktop\Git\ecostate)'); 
+# file.copy( from="vignettes/web_only/eastern_bering_sea.Rmd.orig", to="vignettes/web_only/eastern_bering_sea.Rmd", overwrite=TRUE )
+# devtools::build_rmd("vignettes/web_only/eastern_bering_sea.Rmd"); rmarkdown::render( "vignettes/web_only/eastern_bering_sea.Rmd", rmarkdown::pdf_document())
+```
+
+```{r setup, echo=TRUE, message=FALSE}
+library(EcoState)
+```
+
+`ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   We here demonstrate how it can be fitted to a real-world data set including 10 functional groups and 1 detritus pool, using data across four trophic levels and representing both pelagic and demersal energy pathways.
+
+## Eastern Bering Sea 
+
+We first load the `Survey`, `Catch`, `PB`, and `QB` values, and define other biological inputs:
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# load data
+data(eastern_bering_sea)
+
+# Reformat inputs
+years = 1982:2021 # Catch only goes through 2021, and starting pre-data in 1982 doesn't play well with fit_B0
+taxa = c( "Pollock", "Cod", "Arrowtooth", "Copepod", "Other_zoop", "Chloro", "NFS", "Krill", "Benthic_invert", "Benthos", "Detritus" )
+
+# Define types
+type_i = sapply( taxa, FUN=switch, "Detritus" = "detritus",
+                                   "Chloro" = "auto",
+                                   "hetero" )
+
+# Starting values
+U_i = EE_i = B_i = array( NA, dim=length(taxa), 
+                    dimnames=list(names(eastern_bering_sea$P_over_B)))
+B_i[c("Cod", "Arrowtooth", "NFS")] = c(1, 0.5, 0.02)
+EE_i[] = 1
+U_i[] = 0.2
+
+# Define default vulnerability, except for primary producers
+V_ij = array( 2, dim=c(length(taxa),length(taxa)) )
+dimnames(V_ij) = list(names(B_i),names(B_i))
+V_ij[,'Chloro'] = 91
+```
+
+We then fit the function call.  This is very slow:
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# Define parameters to estimate
+fit_Q = c("Pollock", "Copepod", "Chloro", "Other_zoop", "Krill")
+fit_B0 = c("Pollock", "Cod", "Arrowtooth", "NFS")
+fit_B = c("Cod", "Arrowtooth", "NFS")  
+
+# Define process errors to estimate
+# Only estimating Pollock to speed up demonstration
+fit_eps = "Pollock"
+
+# Which taxa to include
+taxa_to_include = c( "NFS", "Pollock", "Copepod", "Chloro", "Krill" )
+# To run full model use:
+# taxa_to_include = taxa
+
+# Run model
+out = ecostate( taxa = taxa_to_include,
+                years = years,
+                catch = eastern_bering_sea$Catch,
+                biomass = eastern_bering_sea$Survey,
+                PB = eastern_bering_sea$P_over_B,
+                QB = eastern_bering_sea$Q_over_B,
+                DC = eastern_bering_sea$Diet_proportions,
+                B = B_i,
+                EE = EE_i,
+                U = U_i,
+                type = type_i,
+                V = V_ij,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_eps,
+                fit_B0 = fit_B0,
+                control = ecostate_control( n_steps = 20, # using 15 by default
+                                            start_tau = 0.01,
+                                            tmbad.sparse_hessian_compress = 0 ))
+
+# print output
+out
+```
+
+We can then plot the estimated foodweb:
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# Plot foodweb at equilibrium
+# using pelagic producers as x-axis and trophic level as y-axis
+plot_foodweb( out$rep$out_initial$Qe_ij,  
+              xtracer_i = ifelse(taxa_to_include=="Krill",1,0),
+              B_i = out$rep$out_initial$B_i,
+              type_i = type_i[taxa_to_include] )
+```
+

@@ -31,8 +31,8 @@ of different prey (rows).  We identify primary producers as any taxa with no
 consumption (a column of 0s), and assign them as the first trophic level.
 
 More generically, a tracer might be used to track movement of biomass through
-consumption.  For example, if we have a tracer \eqn{x_i} that is 1 for the 
-base of the pelagic food chain, and 0 otherwise, then we can calculate 
+consumption.  For example, if we have a tracer \eqn{x_i} that is 1 for the
+base of the pelagic food chain, and 0 otherwise, then we can calculate
 the proportion of pelagic vs. nonpelagic biomass for each taxon:
 
 \deqn{ \mathbf{y = l Q^* + x} }

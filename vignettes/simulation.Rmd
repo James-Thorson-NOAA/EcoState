@@ -209,6 +209,8 @@ ggplot(results) +
 
 ## Comparison with Rpath
 
+We might also want to compare EcoState with existing implementations of the model.  One script-based implementation available in R is Rpath, and we therefore show the syntax and model-output for this comparison.  
+
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 library(Rpath)
 

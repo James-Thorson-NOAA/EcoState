@@ -21,7 +21,7 @@ plot_foodweb(
 \item{inverse_method}{whether to use pseudoinverse or standard inverse}
 }
 \description{
-Plot consumption as a directed graph including all taxa (vertices) 
+Plot consumption as a directed graph including all taxa (vertices)
 and biomass consumed (arrows).  Taxa are located using tracers,
 where by default the y-axis is trophic level.  #'
 }
