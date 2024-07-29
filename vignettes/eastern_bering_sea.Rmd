@@ -54,9 +54,9 @@ EE_i[] = 1
 U_i[] = 0.2
 
 # Define default vulnerability, except for primary producers
-V_ij = array( 2, dim=c(length(taxa),length(taxa)) )
-dimnames(V_ij) = list(names(B_i),names(B_i))
-V_ij[,'Chloro'] = 91
+X_ij = array( 2, dim=c(length(taxa),length(taxa)) )
+dimnames(X_ij) = list(names(B_i),names(B_i))
+X_ij[,'Chloro'] = 91
 ```
 
 We then fit the function call.  This is very slow:
@@ -88,7 +88,7 @@ out = ecostate( taxa = taxa_to_include,
                 EE = EE_i,
                 U = U_i,
                 type = type_i,
-                V = V_ij,
+                X = X_ij,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
                 fit_eps = fit_eps,

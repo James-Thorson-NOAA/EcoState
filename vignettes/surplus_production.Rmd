@@ -92,7 +92,7 @@ EE_i = 1
 B_i = 1
 U_i = 0.2
 type_i = "auto"
-V_ij = array( 2, dim=c(1,1) )
+X_ij = array( 2, dim=c(1,1) )
 
 # reformat to longform data-frame
 Catch = na.omit(data.frame( "Mass" = C_t, "Year" = years, "Taxon" = taxa ))
@@ -113,7 +113,7 @@ type = "auto"
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
 names(PB_i) = names(QB_i) = names(B_i) = names(EE_i) = names(type) = names(U_i) = taxa
-  dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
+  dimnames(DC_ij) = dimnames(X_ij) = list("Prey"=taxa, "Predator"=taxa)
   
 # Run model
 out0 = ecostate( taxa = taxa,
@@ -125,7 +125,7 @@ out0 = ecostate( taxa = taxa,
                 DC = DC_ij,
                 B = B_i,
                 EE = EE_i,
-                V = V_ij,
+                X = X_ij,
                 type = type,
                 U = U_i,
                 fit_B = fit_B,
@@ -138,7 +138,7 @@ out0 = ecostate( taxa = taxa,
 # Estimate logPB
 pars = out0$tmb_inputs$p
 map = out0$tmb_inputs$map
-map$Vprime_ij = factor(1)
+map$Xprime_ij = factor(1)
 
 # Run model
 out = ecostate( taxa = taxa,
@@ -150,7 +150,7 @@ out = ecostate( taxa = taxa,
                 DC = DC_ij,
                 B = B_i,
                 EE = EE_i,
-                V = V_ij,
+                X = X_ij,
                 type = type,
                 U = U_i,
                 fit_B = fit_B,
@@ -168,10 +168,10 @@ Finally we can calculate a function that calculates the annualized surplus produ
 
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 # Define function to calculate annualized production
-prod_fun = function( biomass, Vprime, logPB, taxon, ecofit ){
+prod_fun = function( biomass, Xprime, logPB, taxon, ecofit ){
   p = ecofit$internal$parhat
   n_taxa = length(ecofit$internal$taxa)
-  if(!missing(Vprime)) p$Vprime_ij[] = Vprime
+  if(!missing(Xprime)) p$Xprime_ij[] = Xprime
   if(!missing(logPB)) p$logPB_i[] = logPB
   if(missing(taxon)) taxon = ecofit$internal$taxa[n_taxa]
   p = add_equilibrium( p,
@@ -210,7 +210,7 @@ x = seq(0, 2*K, length=1000)[-1]
 if(prod_func=="Scaefer") y = r * x * (1 - x/K)
 if(prod_func=="Fox") y = r * x * log(K/x)
 yhat = sapply( x, FUN=prod_fun, ecofit=out,
-               Vprime = out$internal$parhat$Vprime_ij, 
+               Xprime = out$internal$parhat$Xprime_ij, 
                logPB = out$internal$parhat$logPB_i )
 
 # Solve for Bmsy / B0 in production function
@@ -223,13 +223,13 @@ dBdt_approx = function(b, x, p){
   eval(dBdt_expr)
 }
 phi1 = optimize( dBdt_approx, lower=0.01, upper=0.99, maximum=TRUE,
-                x = 1+exp(out$internal$parhat[['Vprime_ij']]), 
+                x = 1+exp(out$internal$parhat[['Xprime_ij']]), 
                 p = exp(out$internal$parhat[['logPB_i']]) )$maximum
 # Empirical
 phi2 = x[which.max(yhat)] / 1000 
 #
 msy1 = exp(out$internal$parhat$logB_i) * dBdt_approx(phi1, 
-                x = 1+exp(out$internal$parhat[['Vprime_ij']]), 
+                x = 1+exp(out$internal$parhat[['Xprime_ij']]), 
                 p = exp(out$internal$parhat[['logPB_i']]) )
 #
 msy2 = yhat[which.max(yhat)]
@@ -276,7 +276,7 @@ n_taxa = length(taxa)
 PB_i = c( 5, 0.1 )
 QB_i = c( NA, 0.5 )
 DC_ij = matrix( c(0,0,1,0), nrow=2 )
-V_ij = matrix( 2, nrow=2, ncol=2 )
+X_ij = matrix( 2, nrow=2, ncol=2 )
 U_i = c( 0.2, 0.2 )
 type = c( "auto", "hetero" )
 EE_i = c( 1, NA ) 
@@ -290,7 +290,7 @@ fit_B = "target"       # equilibrium biomass
 
 # Label EwE inputs for each taxon as expected (so users can easily change taxa)
 names(PB_i) = names(QB_i) = names(B_i) = names(EE_i) = names(type) = names(U_i) = taxa
-  dimnames(DC_ij) = dimnames(V_ij) = list("Prey"=taxa, "Predator"=taxa)
+  dimnames(DC_ij) = dimnames(X_ij) = list("Prey"=taxa, "Predator"=taxa)
   
 # Run model
 out0 = ecostate( taxa = taxa,
@@ -302,7 +302,7 @@ out0 = ecostate( taxa = taxa,
                 DC = DC_ij,
                 B = B_i,
                 EE = EE_i,
-                V = V_ij,
+                X = X_ij,
                 type = type,
                 U = U_i,
                 fit_B = fit_B,
@@ -315,7 +315,7 @@ out0 = ecostate( taxa = taxa,
 # Estimate logPB
 pars = out0$tmb_inputs$p
 map = out0$tmb_inputs$map
-#map$Vprime_ij = factor( rep(1,n_taxa) %o% ifelse(type=="auto",NA,1) )
+#map$Xprime_ij = factor( rep(1,n_taxa) %o% ifelse(type=="auto",NA,1) )
 
 # Run model
 out_bivar = ecostate( taxa = taxa,
@@ -327,7 +327,7 @@ out_bivar = ecostate( taxa = taxa,
                 DC = DC_ij,
                 B = B_i,
                 EE = EE_i,
-                V = V_ij,
+                X = X_ij,
                 type = type,
                 U = U_i,
                 fit_B = fit_B,
@@ -343,7 +343,7 @@ We can then calculate and visualize how this changes the production function:
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 # Calculate annualized production function
 yhat_bivar = sapply( x, FUN=prod_fun, ecofit=out_bivar, taxon="target",
-               Vprime = out_bivar$internal$parhat$Vprime_ij, 
+               Xprime = out_bivar$internal$parhat$Xprime_ij, 
                logPB = out_bivar$internal$parhat$logPB_i )
 
 # Empirical

@@ -38,7 +38,7 @@ function( Time,
   # Inputs from local environment
   QB_i = exp(logQB_i)
   PB_i = exp(logPB_i)
-  V_ij = exp(Vprime_ij) + 1
+  X_ij = exp(Xprime_ij) + 1
   B_i = exp(logB_i)
   # EE_i is in Pars
   # U_i is in Pars
@@ -58,13 +58,13 @@ function( Time,
   Yprey_ij = Yprey_i %*% t(rep(1,n_species))
   U_ij = rep(1,n_species) %*% t(U_i)
   # Consumption = Equilibrium * Pred_functional_response * Prey_functional_response
-  Q_ij = Qe_ij * ( V_ij * Ypred_ij / ( V_ij - 1 + Ypred_ij ) ) * Yprey_ij
+  Q_ij = Qe_ij * ( X_ij * Ypred_ij / ( X_ij - 1 + Ypred_ij ) ) * Yprey_ij
 
   # Calculate growth G_i (called C_i originally but conflicts with catch C_ti)
   G_i = GE_i * colSums(Q_ij)
-  # Replace production for consumption for primary producers, including self-limitation via V_ij
-  numerator = V_ij[cbind(which_primary,which_primary)] * Yprey_i[which_primary]
-  denominator = ( V_ij[cbind(which_primary,which_primary)] - 1 + Yprey_i[which_primary] )
+  # Replace production for consumption for primary producers, including self-limitation via X_ij
+  numerator = X_ij[cbind(which_primary,which_primary)] * Yprey_i[which_primary]
+  denominator = ( X_ij[cbind(which_primary,which_primary)] - 1 + Yprey_i[which_primary] )
   G_i[which_primary] = PB_i[which_primary] * B_i[which_primary] * numerator / denominator
   # Replace for detritus
   G_i[which_detritus] = sum(Q_ij * U_ij) + sum(m0_i * Bt_i)

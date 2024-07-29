@@ -24,9 +24,9 @@
 #'        elements \code{c("auto","hetero","detritus")},
 #'        indicating whether each taxon is a primary producer, consumer/predator, or
 #'        detritus, respectively.   
-#' @param DC numeric-matrix with rownames and colnamesmatching \code{taxa}, 
+#' @param DC numeric-matrix with rownames and colnames matching \code{taxa}, 
 #'        where each column provides the diet proportion for a given predator
-#' @param V numeric-matrix with rownames and colnamesmatching \code{taxa}, 
+#' @param X numeric-matrix with rownames and colnames matching \code{taxa}, 
 #'        where each element gives the vulnerability parameter for a given
 #'        interaction.
 #' @param fit_B Character-vector listing \code{taxa} for which equilibrium
@@ -60,7 +60,7 @@ function( taxa,
           B,
           DC,
           EE,
-          V,
+          X,
           type,
           U,
           fit_B = vector(),
@@ -109,16 +109,16 @@ function( taxa,
   U_i = U[taxa]
   
   # Deal with V
-  if(missing(V)){
-    V_ij = array(2, dim=c(n_species,n_species), dimnames=list(taxa,taxa))
-    V_ij[,which_primary,drop=FALSE] = 91  # Default high value from Gaichas et al. 2011
+  if(missing(X)){
+    X_ij = array(2, dim=c(n_species,n_species), dimnames=list(taxa,taxa))
+    X_ij[,which_primary,drop=FALSE] = 91  # Default high value from Gaichas et al. 2011
   }else{
-    if(!all(taxa %in% rownames(V)) | !all(taxa %in% colnames(V))) stop("Check dimnames for `V`")
-    if(!all(taxa %in% rownames(V)) | !all(taxa %in% colnames(V))) stop("Check dimnames for `V`")
-    V_ij = V[taxa,taxa,drop=FALSE]
+    if(!all(taxa %in% rownames(X)) | !all(taxa %in% colnames(X))) stop("Check dimnames for `X`")
+    if(!all(taxa %in% rownames(X)) | !all(taxa %in% colnames(X))) stop("Check dimnames for `X`")
+    X_ij = X[taxa,taxa,drop=FALSE]
   }
-  Vprime_ij = log(V_ij - 1)
-  # V = exp(Vprime) + 1 so 1 < V < Inf
+  Xprime_ij = log(X_ij - 1)
+  # V = exp(Xprime) + 1 so 1 < V < Inf
   
   #
   assertCharacter( type_i, len=n_species, any.missing=FALSE )
@@ -166,7 +166,7 @@ function( taxa,
             logPB_i = logPB_i,
             logQB_i = logQB_i,
             U_i = U_i,
-            Vprime_ij = Vprime_ij,
+            Xprime_ij = Xprime_ij,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
             epsilon_ti = array( 0, dim=c(0,n_species) ),
@@ -182,7 +182,7 @@ function( taxa,
   map$logQB_i = factor( rep(NA,n_species) )
   map$U_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
-  map$Vprime_ij = factor( array(NA,dim=dim(p$Vprime_ij)) )
+  map$Xprime_ij = factor( array(NA,dim=dim(p$Xprime_ij)) )
   
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
@@ -345,7 +345,7 @@ function( taxa,
     #logQB_i = logQB_i, 
     #logB_i = logB_i, 
     #DC_ij = DC_ij, 
-    #Vprime_ij = Vprime_ij,
+    #Xprime_ij = Xprime_ij,
     hessian.fixed = hessian.fixed,
     taxa = taxa,
     years = years,
@@ -502,8 +502,8 @@ function( x,
   # Diet
   out2 = x$internal$parhat[["DC_ij"]]
   
-  # Diet
-  out3 = exp(x$internal$parhat[["Vprime_ij"]]) + 1
+  # Vulnerability
+  out3 = exp(x$internal$parhat[["Xprime_ij"]]) + 1
   
   # Print to terminal
   if(isFALSE(silent)){

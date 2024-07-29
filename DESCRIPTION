@@ -1,15 +1,20 @@
 Package: EcoState
 Type: Package
-Title: State-Space Extension of EcoPath-with-EcoSim
+Title: State-Space Extension of EcoPath with EcoSim
 Version: 0.1.0
-Date: 2024-05-20
+Date: 2024-07-29
 Authors@R: c(
     person(c("James", "T."), "Thorson", , "James.Thorson@noaa.gov", 
 	   role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7415-1010"))
     )
 Maintainer: James T. Thorson <James.Thorson@noaa.gov>
-Description: Fits biomass dynamics to time-series of catch and biomass.
+Description: Fits a state-space extension of Ecopath with Ecosim (EwE)
+	to time-series of catch and biomass.  EwE is a widely used
+	mass-balance model for biomass dynamics in aquatic ecosystems.
+	EcoState fits biological parameters (e.g., equilibrium mass)
+	and measurement parameters (e.g., catchability coefficients)
+	jointly with residual variation in process errors.  
 License: GPL-3
 Depends:
     R (>= 4.1.0),

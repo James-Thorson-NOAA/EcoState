@@ -14,7 +14,7 @@ ecostate(
   B,
   DC,
   EE,
-  V,
+  X,
   type,
   U,
   fit_B = vector(),
@@ -46,10 +46,10 @@ ratio of consumption to biomass for each taxon}
 \item{B}{numeric-vector with names matching \code{taxa}, providing the
 starting (or fixed) value for equilibrium biomass for each taxon}
 
-\item{DC}{numeric-matrix with rownames and colnamesmatching \code{taxa},
+\item{DC}{numeric-matrix with rownames and colnames matching \code{taxa},
 where each column provides the diet proportion for a given predator}
 
-\item{V}{numeric-matrix with rownames and colnamesmatching \code{taxa},
+\item{X}{numeric-matrix with rownames and colnames matching \code{taxa},
 where each element gives the vulnerability parameter for a given
 interaction.}
 

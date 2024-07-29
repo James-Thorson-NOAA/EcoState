@@ -75,12 +75,12 @@ function( Q_ij,
   #                          layout = layout,
   #                          weighted = TRUE )
   g$log_flow = log(g$weight / min(g$weight,na.rm=TRUE))
-  g$log_size = rep(NA, nrow(g))
-  g$log_size[which(is.na(g$log_flow))] = log(B_i / min(B_i,na.rm=TRUE))
+  g$log_mass = rep(NA, nrow(g))
+  g$log_mass[which(is.na(g$log_flow))] = log(B_i / min(B_i,na.rm=TRUE))
   
   p = ggplot2::ggplot(g) + 
     ggnetwork::geom_edges( ggplot2::aes(x=x, y=y, xend=xend, yend=yend, colour=log_flow) ) +
-    ggnetwork::geom_nodes( ggplot2::aes(x=x, y=y, size=log_size ) ) + 
+    ggnetwork::geom_nodes( ggplot2::aes(x=x, y=y, size=log_mass ) ) + 
     ggnetwork::geom_nodetext( ggplot2::aes(x=x, y=y, label=name), fontface="bold", col="red")
   print(p)
   return(invisible(p))
