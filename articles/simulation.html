@@ -374,7 +374,7 @@ long-form data frames and fit them with <code>ecostate</code></p>
 <span><span class="co"># print output to terminal</span></span>
 <span><span class="va">out</span></span>
 <span><span class="co">#&gt; Dynamics integrated using  ABM  with  10  time-steps</span></span>
-<span><span class="co">#&gt; Run time: Time difference of 2.322536 mins</span></span>
+<span><span class="co">#&gt; Run time: Time difference of 4.188452 mins</span></span>
 <span><span class="co">#&gt; Negative log-likelihood: -262.5825</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; EcoSim parameters:</span></span>
@@ -410,9 +410,9 @@ long-form data frames and fit them with <code>ecostate</code></p>
 <span><span class="co">#&gt;           Estimate  Std. Error</span></span>
 <span><span class="co">#&gt; logtau_i -2.427535   0.2049494</span></span>
 <span><span class="co">#&gt; logtau_i -2.605169   0.3047519</span></span>
-<span><span class="co">#&gt; logtau_i -6.908635 624.7201881</span></span>
+<span><span class="co">#&gt; logtau_i -6.908635 624.7188899</span></span>
 <span><span class="co">#&gt; logtau_i -2.196062   0.2882175</span></span>
-<span><span class="co">#&gt; Maximum gradient component: 0.0001702873</span></span></code></pre></div>
+<span><span class="co">#&gt; Maximum gradient component: 0.0001702235</span></span></code></pre></div>
 <p>Finally, we can extract elements from the fitted model, and plot them
 easily using ggplot2 to compare them with known (simulated) values. This
 exercise shows that EcoState can accurately estimate biomass trends:</p>
@@ -516,7 +516,7 @@ explore estimating vulnerability:</p>
 <span><span class="co"># print output to terminal</span></span>
 <span><span class="va">out</span></span>
 <span><span class="co">#&gt; Dynamics integrated using  ABM  with  10  time-steps</span></span>
-<span><span class="co">#&gt; Run time: Time difference of 7.133491 mins</span></span>
+<span><span class="co">#&gt; Run time: Time difference of 13.39497 mins</span></span>
 <span><span class="co">#&gt; Negative log-likelihood: -262.5825</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; EcoSim parameters:</span></span>
@@ -550,12 +550,12 @@ explore estimating vulnerability:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Estimates: sdreport(.) result</span></span>
 <span><span class="co">#&gt;                Estimate  Std. Error</span></span>
-<span><span class="co">#&gt; Xprime_ij -0.0007346426   0.1769047</span></span>
-<span><span class="co">#&gt; logtau_i  -2.4276318486   0.2064240</span></span>
-<span><span class="co">#&gt; logtau_i  -2.6048038923   0.3155934</span></span>
-<span><span class="co">#&gt; logtau_i  -6.9077525581 613.9936273</span></span>
-<span><span class="co">#&gt; logtau_i  -2.1959829679   0.2887926</span></span>
-<span><span class="co">#&gt; Maximum gradient component: 0.0001618803</span></span></code></pre></div>
+<span><span class="co">#&gt; Xprime_ij -0.0007346206   0.1769047</span></span>
+<span><span class="co">#&gt; logtau_i  -2.4276318463   0.2064240</span></span>
+<span><span class="co">#&gt; logtau_i  -2.6048038919   0.3155934</span></span>
+<span><span class="co">#&gt; logtau_i  -6.9077525591 613.9939160</span></span>
+<span><span class="co">#&gt; logtau_i  -2.1959829803   0.2887926</span></span>
+<span><span class="co">#&gt; Maximum gradient component: 0.0001617748</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
