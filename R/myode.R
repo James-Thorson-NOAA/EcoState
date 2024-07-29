@@ -5,8 +5,8 @@
 #' @description 
 #' Interface for \code{RTMBode::ode}, itself an interface for \code{deSolve::ode}
 #'
-#' @param f function in the differential equation y' = f(x, y);
-#'        defined as a function R \times R^m \rightarrow R^m, where m is the number of equations.
+#' @param f function in the differential equation \eqn{y' = f(x, y)};
+#'        defined as a function \eqn{R \times R^m \rightarrow R^m}, where \eqn{m} is the number of equations.
 #' @param a starting time for the interval to integrate
 #' @param b ending time for the interval to integrate.
 #' @param y0 starting values at time \code{a}

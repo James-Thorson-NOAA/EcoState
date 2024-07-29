@@ -6,7 +6,9 @@
 
 #-----------------------------------------------------------------
 # Install locally if needed
+# devtools::document( R'(C:\Users\James.Thorson\Desktop\Git\EcoState)' )
 # devtools::install_local( R'(C:\Users\James.Thorson\Desktop\Git\EcoState)', force=TRUE )
+# remotes::install_github( "James-Thorson-NOAA/EcoState", force=TRUE, dep=TRUE )
 
 # load needed libraries
 library(pkgdown)
@@ -16,10 +18,10 @@ library(pkgdown)
 if( FALSE ){
   setwd(R'(C:\Users\James.Thorson\Desktop\Git\EcoState\vignettes)')
 
-  knitr::knit( "web_only/eastern_bering_sea.Rmd.orig", output = "web_only/eastern_bering_sea.Rmd" )
+  #knitr::knit( "web_only/eastern_bering_sea.Rmd.orig", output = "web_only/eastern_bering_sea.Rmd" )
 }
 
-setwd(R'(C:\Users\James.Thorson\Desktop\Git\tinyVAST)')
+setwd(R'(C:\Users\James.Thorson\Desktop\Git\EcoState)')
 
 # Only needed once
 if( FALSE ){

@@ -40,3 +40,4 @@ Remotes:
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 LazyData: true
+URL: https://james-thorson-noaa.github.io/EcoState/

@@ -7,8 +7,8 @@
 ode23(f, a, b, y0, n, Pars, rtol = 0.001, atol = 1e-06)
 }
 \arguments{
-\item{f}{function in the differential equation y' = f(x, y);
-defined as a function R \times R^m \rightarrow R^m, where m is the number of equations.}
+\item{f}{function in the differential equation \eqn{y' = f(x, y)};
+defined as a function \eqn{R \times R^m \rightarrow R^m}, where \eqn{m} is the number of equations.}
 
 \item{a}{starting time for the interval to integrate}
 
