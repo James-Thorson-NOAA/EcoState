@@ -40,6 +40,7 @@
     <li><a class="dropdown-item" href="articles/surplus_production.html">EcoState as surplus production model</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -56,13 +57,15 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="ecostate">EcoState<a class="anchor" aria-label="anchor" href="#ecostate"></a>
 </h1></div>
-<p>State-space extension of EcoPath-with-EcoSim</p>
+<p><a href="https://james-thorson-noaa.github.io/EcoState/" class="external-link"><img src="https://img.shields.io/badge/documentation-EcoState-orange.svg?colorB=E91E63" alt="Documentation"></a></p>
+<p>Package <em>EcoState</em> fits a state-space mass-balance model intended for aquatic ecosystems, using mass-balance equations from matching and dynamical equations matching Ecosim. Unlike Ecopath with Ecosim (EwE), it fits both biological parameters (e.g., equilibrium biomass and predator-prey vulnerability) and measurement parameters (e.g., catchability coefficients) via fit to time-series data. It also estimates additional process errors representing nonstationarity in growth efficiency, ecotrophic efficient, migration, or other unmodeled processes.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>EcoState can be installed as a private repo. First click Code -&gt; Download ZIP and save it locally. Then install it from that local copy:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(devtools)</span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">install_local</span>([LOCAL PATH], <span class="at">dependencies =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>EcoState can be installed from GitHub using:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://remotes.r-lib.org" class="external-link">remotes</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span> <span class="st">"James-Thorson-NOAA/EcoState"</span> <span class="op">)</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
