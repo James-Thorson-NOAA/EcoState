@@ -36,7 +36,8 @@ Enhances:
 Remotes:
     DTUAqua/spict/spict,
     jabbamodel/JABBA,
-    NOAA-EDAB/Rpath
+    NOAA-EDAB/Rpath,
+    kaskr/RTMB/RTMBode
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 LazyData: true
