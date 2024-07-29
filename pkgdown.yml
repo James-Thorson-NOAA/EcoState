@@ -1,0 +1,8 @@
+pandoc: 3.1.1
+pkgdown: 2.1.0
+pkgdown_sha: ~
+articles:
+  eastern_bering_sea: eastern_bering_sea.html
+  simulation: simulation.html
+  surplus_production: surplus_production.html
+last_built: 2024-07-29T20:27Z

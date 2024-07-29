@@ -1,0 +1,27 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/articles/eastern_bering_sea.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/articles/simulation.html</loc></url>
+<url><loc>/articles/surplus_production.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/LICENSE-text.html</loc></url>
+<url><loc>/reference/abm3pc_sys.html</loc></url>
+<url><loc>/reference/add_equilibrium.html</loc></url>
+<url><loc>/reference/compute_nll.html</loc></url>
+<url><loc>/reference/compute_tracer.html</loc></url>
+<url><loc>/reference/dBdt.html</loc></url>
+<url><loc>/reference/eastern_bering_sea.html</loc></url>
+<url><loc>/reference/ecostate.html</loc></url>
+<url><loc>/reference/ecostate_control.html</loc></url>
+<url><loc>/reference/ginv.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/myode.html</loc></url>
+<url><loc>/reference/ode23.html</loc></url>
+<url><loc>/reference/plot_foodweb.html</loc></url>
+<url><loc>/reference/print.ecostate.html</loc></url>
+<url><loc>/reference/print_ecopars.html</loc></url>
+<url><loc>/reference/rk4sys.html</loc></url>
+</urlset>
+
