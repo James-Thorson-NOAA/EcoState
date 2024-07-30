@@ -12,3 +12,9 @@ EcoState can be installed from GitHub using:
 library(remotes)
 install_github( "James-Thorson-NOAA/EcoState" )
 ```
+
+# More details 
+
+For more background please read:
+
+Thorson, J.  Kristensen, K., Aydin, K., Gaichas, S., Kimmel, D.G., McHuron, E.A., Nielsen, J.N., Townsend, H., Whitehouse, G.A. EcoState:  Extending Ecopath with Ecosim to estimate biological parameters and process errors using RTMB and time-series data.  Pre-print URL: https://doi.org/10.32942/X2QK81 
