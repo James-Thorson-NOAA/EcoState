@@ -153,8 +153,11 @@ function( p,
     # SurvS
     Zrate = Z_s2[which_s2[t2_a]] / settings$STEPS_PER_YEAR
     SurvS = exp(-1 * c(0, cumsum(Zrate)[-length(Zrate)] ))
+
+    ################## EXPERIMENT WITH RTMB
     # Correct plus-group
     SurvS[length(SurvS)] = SurvS[length(SurvS)] / (1 - exp(-Zrate[length(Zrate)]))
+    ################## EXPERIMENT WITH RTMB
 
     # Solve for R0 and NageS
     #which_a = which( Xg2_zz[,'is_lead']==1 )
@@ -366,6 +369,15 @@ function( p,
   # (F is already changed in update_stamzas)
   #p$logF_i = p$logF_i - log(STEPS_PER_YEAR)
   #p$epsilon_i = p$epsilon_i - log(STEPS_PER_YEAR)
+
+  #
+  #data2 = local({
+  #                type_i = type_i
+  #                n_species = n_species
+  #                F_type = control$F_type
+  #                environment()
+  #})
+  #environment(dBdt) <- data2
 
   # Project
   for( STEP in seq_len(STEPS_PER_YEAR) ){

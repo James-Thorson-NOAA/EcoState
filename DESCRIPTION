@@ -1,7 +1,7 @@
 Package: EcoState
 Type: Package
 Title: State-Space Extension of EcoPath with EcoSim
-Version: 0.1.0
+Version: 0.2.0
 Date: 2024-07-29
 Authors@R: c(
     person(c("James", "T."), "Thorson", , "James.Thorson@noaa.gov", 

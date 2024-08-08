@@ -291,7 +291,9 @@ function( taxa,
                   environment()
   })
   environment(dBdt) <- data2
-  
+  environment(project_stanzas) <- data2    # project_stanzas(.) calls dBdt(.)
+
+
   # Make TMB object
   #browser()
   # compute_nll(p)
@@ -302,7 +304,8 @@ function( taxa,
                     random = control$random,
                     profile = control$profile,
                     silent = control$silent )
-  traceback(max=20)
+  #traceback(max=20)
+  #obj$fn(obj$par)
 
   # Optimize
   opt = list( "par"=obj$par )

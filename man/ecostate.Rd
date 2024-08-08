@@ -22,6 +22,7 @@ ecostate(
   fit_B0 = vector(),
   fit_EE = vector(),
   fit_eps = vector(),
+  settings = stanza_settings(taxa = taxa),
   control = ecostate_control()
 )
 }
