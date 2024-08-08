@@ -68,6 +68,7 @@ function( taxa,
           fit_B0 = vector(),
           fit_EE = vector(),
           fit_eps = vector(),
+          settings = stanza_settings(taxa=taxa),
           control = ecostate_control() ){
 
   # 
@@ -100,7 +101,7 @@ function( taxa,
   if(!all(taxa %in% names(EE))) stop("Check names for `EE`")
   if(!all(taxa %in% names(type))) stop("Check names for `type`")
   if(!all(taxa %in% names(U))) stop("Check names for `U`")
-  logPB_i = log(PB[taxa])
+  logPB_i = array( log(PB[taxa]), dimnames=list(taxa) )
   logQB_i = log(QB[taxa])
   logB_i = log(B[taxa])
   DC_ij = DC[taxa,taxa,drop=FALSE]
@@ -130,9 +131,11 @@ function( taxa,
   # Indicators 
   which_primary = which( type_i=="auto" )
   which_detritus = which( type_i=="detritus" )
+  which_multigroup = match( settings$multigroup_taxa, settings$taxa )
   noB_i = ifelse( is.na(logB_i), 1, 0 )
-  
-  if(any(is.na(c(logPB_i,logQB_i[-c(which_primary,which_detritus)],DC_ij)))){
+  noB_i[which_multigroup] = 0
+
+  if(any(is.na(c(logPB_i,logQB_i[-c(which_primary,which_detritus,which_multigroup)],DC_ij)))){
     stop("Check `PB` `QB` and `DC` for NAs or `taxa` that are not provided")
   }
   
@@ -250,6 +253,9 @@ function( taxa,
     map = control$map
   }
   
+  #
+  stanza_data = make_stanza_data( settings )
+
   # Load data in environment for function "compute_nll"
   data = local({
                   Bobs_ti = Bobs_ti
@@ -271,6 +277,8 @@ function( taxa,
                   inverse_method = control$inverse_method
                   type_i = type_i
                   process_error = control$process_error
+                  settings = settings
+                  stanza_data = stanza_data
                   environment()
   })
   environment(compute_nll) <- data
@@ -286,6 +294,7 @@ function( taxa,
   
   # Make TMB object
   #browser()
+  # compute_nll(p)
   # environment(compute_nll) <- data
   obj <- MakeADFun( func = compute_nll, 
                     parameters = p,
@@ -293,7 +302,8 @@ function( taxa,
                     random = control$random,
                     profile = control$profile,
                     silent = control$silent )
-  
+  traceback(max=20)
+
   # Optimize
   opt = list( "par"=obj$par )
   for( i in seq_len(max(0,control$nlminb_loops)) ){

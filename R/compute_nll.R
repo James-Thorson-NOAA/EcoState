@@ -13,6 +13,12 @@
 compute_nll <-
 function( p ) { 
   
+  # Compute stanza stuff
+  p = add_stanza_params( p,
+                   stanza_data = stanza_data,
+                   settings = settings )
+
+  # Compute equilibrium values
   p = add_equilibrium( p,
                        scale_solver = scale_solver,
                        noB_i = noB_i,
@@ -44,11 +50,13 @@ function( p ) {
   if( process_error == "alpha" ){
     epsilon_ti[1,] = p$alpha_ti[1,] 
   }
+  Y_zz = p$Y_zz
 
   # Loop through years
   for( t in 2:nrow(B_ti) ){
     # Assemble inputs
     p_t = p
+    p_t$Y_zz = Y_zz
     p_t$logF_i = p$logF_ti[t,]
 
     # State-space or continuous innovations
@@ -71,6 +79,22 @@ function( p ) {
           Pars = p_t,
           y0 = y0 )
 
+    # Projec stanzas
+    proj_stanzas = project_stanzas(
+                 p = p_t,
+                 stanza_data = stanza_data,
+                 y = proj$y,
+                 STEPS_PER_YEAR = settings$STEPS_PER_YEAR,
+                 record_steps = FALSE,
+                 correct_errors = TRUE )
+    Y_zz = proj_stanzas$Y_zz
+
+    #
+    Bnew_s2 = get_stanza_total( stanza_data = stanza_data,
+                               Y_zz = p_t$Y_zz )
+    Bnew_i = proj$y[nrow(proj$y),seq_len(n_species)]
+    Bnew_i[p_t$stanzainfo_s2z[,'s']] = Bnew_s2
+
     # Average biomass
     for( i in seq_len(n_species) ){
       Bmean_ti[t,i] = mean(proj$y[,i])
@@ -78,9 +102,9 @@ function( p ) {
 
     # Record variables
     if( process_error == "epsilon" ){
-      B_ti[t,] = proj$y[nrow(proj$y),seq_len(n_species)]
+      B_ti[t,] = Bnew_i
     }else{
-      Bhat_ti[t,] = proj$y[nrow(proj$y),seq_len(n_species)]
+      Bhat_ti[t,] = Bnew_i
       for( i in seq_len(n_species) ){
         if( !is.na(p$logtau_i[i]) ){
           B_ti[t,i] = out_initial$B_i[i] * exp(p$alpha_ti[t,i])
@@ -105,6 +129,7 @@ function( p ) {
                 State = c(Bmean_ti[t,], rep(0,n_species)),
                 Pars = p_t,
                 what = "stuff" )
+
     # Must calculate during loop because G_ti is NA for t=1
     G_ti[t,] = out$G_i
     g_ti[t,] = out$g_i
