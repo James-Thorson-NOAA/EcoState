@@ -9,9 +9,13 @@ function( settings ){
 
   # Indexing
   s_s2 = match(names(settings$stanza_groups), taxa)
-  g2_s2 = match( settings$stanza_groups, settings$unique_stanza_groups )
-  t2_s2 = sapply( seq_along(g2_s2), FUN=\(i)cumsum(g2_s2[i]==g2_s2)[i] )
   n_s2 = length(s_s2)
+  g2_s2 = match( settings$stanza_groups, settings$unique_stanza_groups )
+  if( n_s2>0 ){
+    t2_s2 = sapply( seq_along(g2_s2), FUN=\(i)cumsum(g2_s2[i]==g2_s2)[i] )
+  }else{
+    t2_s2 = vector()
+  }
   n_g2 = length(settings$unique_stanza_groups)
 
   # Checks for inputs for each taxa
@@ -30,12 +34,12 @@ function( settings ){
                           "g2" = g2_s2,
                           "lead" = Leading_s2,
                           "t2" = t2_s2,
-                          "amax" = Amax_s2,
+                          "amax" = Amax_s2 )
                           #"Z" = exp(p$logPB_i)[multigroup_taxa],
-                          "Consumption" = NA,
-                          "Q" = NA,
-                          "leading_ratio" = NA,
-                          "Gf" = NA )
+                          #"Consumption" = 0,
+                          #"Q" = 0,
+                          #"leading_ratio" = 0,
+                          #"Gf" = 0 )
 
   stanzainfo_g2z = cbind( "Wmat" = Wmat_g2,
                           "SpawnX" = SpawnX_g2,
@@ -99,6 +103,8 @@ function( p,
           stanza_data,
           settings ){
 
+  # Necessary in packages
+  "c" <- ADoverload("c")
 
   #s_s2 = settings$s_s2
   #g2_s2 = settings$g2_s2
@@ -124,16 +130,19 @@ function( p,
   #pos = function(x) ifelse(x>0,x,0)
   pos = function(x) (x + sqrt(x^2))/2
 
+  ################## EXPERIMENT WITH RTMB
   # EASIER TO LOOP THROUGH STANZAS
   #Y_zz = matrix(nrow=0, ncol=3)
-  baseRzeroS = baseEggsStanza = baseSpawnBio = rep(0, n_g2)
-  #plusage_g2 = tapply( stanzainfo_s2z[,'amax'], INDEX=stanzainfo_s2z[,'g2'], FUN=max )
+  #baseRzeroS = baseEggsStanza = baseSpawnBio = rep(0, n_g2)
+  #baseEggsStanza = baseSpawnBio = baseRzeroS = vector(mode="numeric",n_g2)     # rep(0, n_g2) does not work
+  baseEggsStanza = baseSpawnBio = baseRzeroS = Z_s2[1:n_g2]     # rep(0, n_g2) and vector(mode="numeric",n_g2) does not work
+  leading_ratio_s2 = Q_s2 = Consumption_s2 = Z_s2
   for( g2 in seq_len(n_g2) ){
     #
     Xg2_zz = X_zz[which(X_zz[,'g2']==g2),]
 
     # Make fractional-age starting at age=0
-    AGE = Xg2_zz[,'AGE']
+    AGE = Xg2_zz[,'AGE'] * Z_s2[1] / Z_s2[1]   # Extra stuff ensures that it is class-advector
 
     #
     stanzainfo_t2z = stanzainfo_s2z[which(stanzainfo_s2z[,'g2']==g2),]
@@ -153,15 +162,20 @@ function( p,
     # SurvS
     Zrate = Z_s2[which_s2[t2_a]] / settings$STEPS_PER_YEAR
     SurvS = exp(-1 * c(0, cumsum(Zrate)[-length(Zrate)] ))
+    #SurvS = Zrate
+    #SurvS[1] = 1
+    #for(a in 2:length(Zrate)){
+    #  SurvS[a] = SurvS[a-1] * exp(-Zrate[a-1])
+    #}
+    #SurvS[-1] = exp(-1 * cumsum(Zrate)[-length(Zrate)])
 
-    ################## EXPERIMENT WITH RTMB
     # Correct plus-group
     SurvS[length(SurvS)] = SurvS[length(SurvS)] / (1 - exp(-Zrate[length(Zrate)]))
-    ################## EXPERIMENT WITH RTMB
 
     # Solve for R0 and NageS
     #which_a = which( Xg2_zz[,'is_lead']==1 )
     BperR = sum(SurvS * WageS * Xg2_zz[,'is_lead'])
+    #tmp = exp(p$logB_i)[stanzainfo_g2z[g2,'lead_s']]
     #which_s = stanzainfo_t2z[which(stanzainfo_t2z[,'lead']==1),'s']
     ################## EXPERIMENT WITH RTMB
     baseRzeroS[g2] = exp(p$logB_i)[stanzainfo_g2z[g2,'lead_s']] / BperR
@@ -175,7 +189,7 @@ function( p,
 
     #
     s = stanzainfo_t2z[which_leading,'s']
-    stanzainfo_s2z[leading_s2,'Consumption'] = exp(p$logQB_i[s]) * exp(p$logB_i[s])
+    Consumption_s2[leading_s2] = exp(p$logQB_i[s]) * exp(p$logB_i[s])
 
     # Solve for expected consumption
     for( t2 in seq_len(nrow(stanzainfo_t2z)) ){
@@ -184,22 +198,24 @@ function( p,
       #if( is.na(p$logB_i[s]) ){
         p$logB_i[s] = log(sum(NageS[which_a] * WageS[which_a], na.rm=TRUE))
       #}
-      stanzainfo_s2z[stanzainfo_t2z[t2,'s2'],'Q'] = sum(NageS[which_a] * QageS[which_a], na.rm=TRUE)
+      Q_s2[stanzainfo_t2z[t2,'s2']] = sum(NageS[which_a] * QageS[which_a], na.rm=TRUE)
+      #stanzainfo_s2z[stanzainfo_t2z[t2,'s2'],'Q'] = sum(NageS[which_a] * QageS[which_a], na.rm=TRUE)
     }
 
     # Loop again for Cons and QB
     for( t2 in seq_len(nrow(stanzainfo_t2z)) ){
       s = stanzainfo_t2z[t2,'s']
       s2 = stanzainfo_t2z[t2,'s2']
-      stanzainfo_s2z[s2,'leading_ratio'] = stanzainfo_s2z[leading_s2,'Consumption'] / stanzainfo_s2z[leading_s2,'Q']
-      stanzainfo_s2z[s2,'Consumption'] = stanzainfo_s2z[s2,'Q'] * stanzainfo_s2z[s2,'leading_ratio']
+      leading_ratio_s2[s2] = Consumption_s2[leading_s2] / Q_s2[leading_s2]
+      Consumption_s2[s2] = Q_s2[s2] * leading_ratio_s2[s2]
       #if( is.na(p$logQB_i[s]) ){
-        p$logQB_i[s] = log(stanzainfo_s2z[s2,'Consumption']) - p$logB_i[s]
+        p$logQB_i[s] = log(Consumption_s2[s2]) - p$logB_i[s]
       #}
     }
 
     # SplitAlpha = REco.sim$stanzas$SplitAlpha
-    SplitAlpha = rep(0, length=plusage_g2[g2] * settings$STEPS_PER_YEAR)
+    #SplitAlpha = rep(0, length=plusage_g2[g2] * settings$STEPS_PER_YEAR)
+    SplitAlpha = WageS
     for( t2 in seq_len(nrow(stanzainfo_t2z)) ){
       s = stanzainfo_t2z[t2,'s']
       s2 = stanzainfo_t2z[t2,'s2']
@@ -207,7 +223,8 @@ function( p,
       if(which_a[length(which_a)]==length(WageS)) which_a = which_a[-length(which_a)]
       # W(a+1) = vbm_g2 * W(a) + (Food/Pred) * SplitAlpha
       # SplitAlpha = (W(a+1) - vbm_g2 * W(a)) / (Food/Pred)
-      SplitAlpha[which_a] = (WageS[which_a+1] - vbm_g2[g2] * WageS[which_a]) / stanzainfo_s2z[s2,'leading_ratio']
+      #SplitAlpha[which_a] = (WageS[which_a+1] - vbm_g2[g2] * WageS[which_a]) / stanzainfo_s2z[s2,'leading_ratio']
+      SplitAlpha[which_a] = (WageS[which_a+1] - vbm_g2[g2] * WageS[which_a]) / leading_ratio_s2[s2]
       SplitAlpha[length(SplitAlpha)] = SplitAlpha[length(SplitAlpha)-1]
     }
 
@@ -245,7 +262,7 @@ function( p,
 
   # Globals
   vbm_g2 = (1 - 3 * stanza_data$stanzainfo_g2z[,'K'] / STEPS_PER_YEAR)
-  SB_g2 = rep(0, stanza_data$n_g2)
+  SB_g2 = exp(p$logPB_i)[stanza_data$stanzainfo_s2z[,'s']] # Get it to be class-advector
   Wmat_g2 = stanza_data$stanzainfo_g2z[,'Wmat']
   SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
   Y_zz = p$Y_zz
@@ -254,6 +271,7 @@ function( p,
 
   # Increase age given plus group
   increase_vector = function(vec, plus_group="average"){
+    "c" <- ADoverload("c")  # Necessary in packages
     out = c( 0, vec[-length(vec)] )
     out[length(out)] = out[length(out)] + vec[length(out)]
     if(plus_group=="average") out[length(out)] = out[length(out)] / 2
@@ -324,15 +342,21 @@ function( p,
 
 #' @export
 get_stanza_total <-
-function( stanza_data,
+function( logQB_i,
+          stanza_data,
           Y_zz,
           what = c("Biomass","Abundance") ){
 
   # Loop through stanza-variables
   what = match.arg(what)
-  Y_s2 = rep(0, nrow(stanza_data$stanzainfo_s2z))
+  # Necessary in packages
+  "c" <- ADoverload("c")
+
+  #Y_s2 = advector(rep(0, stanza_data$n_s2))   # advector(rep(0,X)) fails during obj$report()
+  Y_s2 = logQB_i[seq_len(stanza_data$n_s2)]
+  #if(!inherits(Y_s2,"advector")) stop("Check Y_s2")
   X_zz = stanza_data$X_zz
-  for( s2 in seq_len(nrow(stanza_data$stanzainfo_s2z)) ){
+  for( s2 in seq_len(stanza_data$n_s2) ){
     g2 = stanza_data$stanzainfo_s2z[s2,'g2']
     t2 = stanza_data$stanzainfo_s2z[s2,'t2']
     s = stanza_data$stanzainfo_s2z[s2,'s']
@@ -396,7 +420,8 @@ function( p,
                   #increase_age = increase_age,
                   STEPS_PER_YEAR = STEPS_PER_YEAR )
     if(record_steps){
-      B_s2 = get_stanza_total( stanza_data = stanza_data,
+      B_s2 = get_stanza_total( logQB_i = p$logQB_i,
+                               stanza_data = stanza_data,
                                  Y_zz = Y_zz )
       record = rbind(record, B_s2)
     }
@@ -404,8 +429,10 @@ function( p,
 
   if(correct_errors){
     # Calculate ending biomass
-    B_s2 = get_stanza_total( stanza_data = stanza_data,
+    B_s2 = get_stanza_total( logQB_i = p$logQB_i,
+                             stanza_data = stanza_data,
                                Y_zz = Y_zz )
+    #if(!inherits(B_s2,"advector")) stop("Check B_s2")
     # Loop through multi-stanza groups
     for( g2 in seq_len(stanza_data$n_g2) ){
       which_z = which(stanza_data$X_zz[,'g2']==g2)
@@ -416,7 +443,8 @@ function( p,
   }
 
   # Calculate ending biomass
-  B_s2 = get_stanza_total( stanza_data = stanza_data,
+  B_s2 = get_stanza_total( logQB_i = p$logQB_i,
+                           stanza_data = stanza_data,
                              Y_zz = Y_zz )
 
   # BUndle and return
@@ -443,13 +471,17 @@ function( taxa,
           STEPS_PER_YEAR = 1 ){
 
   #
-  if(missing(stanza_groups)) stanza_groups = array(NA, dim=length(taxa), dimnames=list(taxa))
+  if(missing(stanza_groups)) stanza_groups = vector()
   unique_stanza_groups = setdiff(stanza_groups[taxa], NA)
   multigroup_taxa = names(stanza_groups)[which(stanza_groups %in% unique_stanza_groups)]
 
   # More defaults
   if(missing(SpawnX)) SpawnX = array(2, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
   if(missing(d)) d = array(2/3, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
+
+  if( length(unique_stanza_groups)==0 ){
+    K = d = Wmat = Amax = vector()
+  }
 
   # Return
   structure( list(
