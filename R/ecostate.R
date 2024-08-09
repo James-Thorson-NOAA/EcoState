@@ -351,6 +351,7 @@ function( taxa,
   internal = list(
     parhat = parhat,
     control = control,
+    settings = settings,
     Bobs_ti = Bobs_ti,
     Cobs_ti = Cobs_ti,
     # Avoid stuff that's in parhat
