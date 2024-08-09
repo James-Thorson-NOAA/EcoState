@@ -322,6 +322,7 @@ function( p,
   return(Y_zz)
 }
 
+#' @export
 get_stanza_total <-
 function( stanza_data,
           Y_zz,
@@ -346,6 +347,7 @@ function( stanza_data,
   return(Y_s2)
 }
 
+#' @export
 project_stanzas <-
 function( p,
           stanza_data,
