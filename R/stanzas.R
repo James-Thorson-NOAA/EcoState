@@ -132,7 +132,7 @@ function( p,
 
   ################## EXPERIMENT WITH RTMB
   # EASIER TO LOOP THROUGH STANZAS
-  #Y_zz = matrix(nrow=0, ncol=3)
+  Y_zz = matrix(nrow=0, ncol=4)
   #baseRzeroS = baseEggsStanza = baseSpawnBio = rep(0, n_g2)
   #baseEggsStanza = baseSpawnBio = baseRzeroS = vector(mode="numeric",n_g2)     # rep(0, n_g2) does not work
   baseEggsStanza = baseSpawnBio = baseRzeroS = Z_s2[1:n_g2]     # rep(0, n_g2) and vector(mode="numeric",n_g2) does not work
@@ -229,15 +229,8 @@ function( p,
     }
 
     # Stack
-    ################## EXPERIMENT WITH RTMB
-    Y_zz = matrix( nrow=length(WageS), ncol=4 )
-    colnames(Y_zz) = c("WageS", "NageS", "QageS", "SplitAlpha")
-    Y_zz[,'WageS'] = WageS
-    Y_zz[,'NageS'] = NageS
-    Y_zz[,'QageS'] = QageS
-    Y_zz[,'SplitAlpha'] = SplitAlpha
-    #Y_zz = rbind( Y_zz, Yg2_zz )  # deparse.level=0 avoids RTMB error
-    ################## EXPERIMENT WITH RTMB
+    Yg2_zz = cbind( WageS=WageS, NageS=NageS, QageS=QageS, SplitAlpha=SplitAlpha)
+    Y_zz = rbind( Y_zz, Yg2_zz )  # deparse.level=0 avoids RTMB error
   }
 
   # Add and output
