@@ -52,6 +52,11 @@ function( p ) {
   }
   Y_zz = p$Y_zz
 
+  # 
+  Y_tzz = array( NA, dim=c(nrow(Bobs_ti),dim(p$Y_zz)), 
+                 dimnames=list(NULL,rownames(p$Y_zz),colnames(p$Y_zz)) ) # dimnames-list dimension matching
+  Y_tzz[1,,] = Y_zz
+
   # Loop through years
   for( t in 2:nrow(B_ti) ){
     # Assemble inputs
@@ -88,6 +93,7 @@ function( p ) {
                  record_steps = FALSE,
                  correct_errors = TRUE )
     Y_zz = proj_stanzas$Y_zz
+    Y_tzz[t,,] = Y_zz
 
     #
     Bnew_s2 = get_stanza_total( logQB_i = p$logQB_i,
@@ -190,6 +196,7 @@ function( p ) {
   REPORT( loglik3_ti )
   REPORT( jnll )
   REPORT( TL_ti )
+  REPORT( Y_tzz )
 
   ADREPORT( B_ti )
   ADREPORT( Chat_ti )

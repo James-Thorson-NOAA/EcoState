@@ -8,7 +8,7 @@ function( settings ){
   #multigroup_taxa = names(settings$stanza_groups)[which(settings$stanza_groups %in% unique_stanza_groups)]
 
   # Indexing
-  s_s2 = match(names(settings$stanza_groups), taxa)
+  s_s2 = match(names(settings$stanza_groups), settings$taxa)
   n_s2 = length(s_s2)
   g2_s2 = match( settings$stanza_groups, settings$unique_stanza_groups )
   if( n_s2>0 ){
@@ -65,7 +65,7 @@ function( settings ){
   for( g2 in seq_len(n_g2) ){
     # Make fractional-age starting at age=0
     AGE = (seq_len(plusage_g2[g2] * settings$STEPS_PER_YEAR) - 1) / settings$STEPS_PER_YEAR
-    stanzainfo_t2z = stanzainfo_s2z[which(stanzainfo_s2z[,'g2']==g2),]
+    stanzainfo_t2z = stanzainfo_s2z[which(stanzainfo_s2z[,'g2']==g2),,drop=FALSE]   # drop=FALSE in case only one stanza for single multigroup
 
     #
     t2_a = sapply( AGE, FUN=\(a){sum(a>stanzainfo_t2z[,'amax'])} ) + 1
@@ -145,7 +145,7 @@ function( p,
     AGE = Xg2_zz[,'AGE'] * Z_s2[1] / Z_s2[1]   # Extra stuff ensures that it is class-advector
 
     #
-    stanzainfo_t2z = stanzainfo_s2z[which(stanzainfo_s2z[,'g2']==g2),]
+    stanzainfo_t2z = stanzainfo_s2z[which(stanzainfo_s2z[,'g2']==g2),,drop=FALSE]
     which_s2 = stanzainfo_t2z[,'s2']
     which_leading = which(stanzainfo_t2z[,'lead']==1)
     leading_s2 = stanzainfo_t2z[which_leading,'s2']
@@ -282,8 +282,8 @@ function( p,
 
     #
     ################## EXPERIMENT WITH RTMB
-    #stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),]
-    stanzainfo_t2z = stanza_data$stanzainfo_s2z
+    stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),,drop=FALSE]
+    #stanzainfo_t2z = stanza_data$stanzainfo_s2z
     ################## EXPERIMENT WITH RTMB
     which_z = which( (X_zz[,'g2']==stanza_data$stanzainfo_s2z[s2,'g2']) & (X_zz[,'t2']==stanza_data$stanzainfo_s2z[s2,'t2']) )
     #which_z = which( (X_zz[,'g2']==g2) & (X_zz[z_g2,'t2']==stanzainfo_t2z[t2,'t2']) )
@@ -355,7 +355,7 @@ function( logQB_i,
     s = stanza_data$stanzainfo_s2z[s2,'s']
 
     #
-    stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),]
+    stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),,drop=FALSE]
     age_vec = which( X_zz[which(X_zz[,'g2']==g2),'t2'] == stanzainfo_t2z[t2,'t2'] )
     which_z = which(X_zz[,'g2']==g2)[age_vec]
     if(what=="Biomass") Y_s2[s2] = sum(Y_zz[which_z,'NageS'] * Y_zz[which_z,'WageS'], na.rm=TRUE)
@@ -429,7 +429,7 @@ function( p,
     # Loop through multi-stanza groups
     for( g2 in seq_len(stanza_data$n_g2) ){
       which_z = which(stanza_data$X_zz[,'g2']==g2)
-      stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),]
+      stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),,drop=FALSE]
       error_t2 = B_s2[stanzainfo_t2z[,'s2']] / y[nrow(y),stanzainfo_t2z[,'s']]
       Y_zz[which_z,'NageS'] = Y_zz[which_z,'NageS'] / error_t2[stanza_data$X_zz[which_z,'t2']]
     }

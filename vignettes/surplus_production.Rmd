@@ -223,13 +223,13 @@ dBdt_approx = function(b, x, p){
   eval(dBdt_expr)
 }
 phi1 = optimize( dBdt_approx, lower=0.01, upper=0.99, maximum=TRUE,
-                x = 1+exp(out$internal$parhat[['Xprime_ij']]), 
+                x = 1+exp(out$internal$parhat[['Xprime_ij']][1,1]), 
                 p = exp(out$internal$parhat[['logPB_i']]) )$maximum
 # Empirical
 phi2 = x[which.max(yhat)] / 1000 
 #
 msy1 = exp(out$internal$parhat$logB_i) * dBdt_approx(phi1, 
-                x = 1+exp(out$internal$parhat[['Xprime_ij']]), 
+                x = 1+exp(out$internal$parhat[['Xprime_ij']][1,1]), 
                 p = exp(out$internal$parhat[['logPB_i']]) )
 #
 msy2 = yhat[which.max(yhat)]
@@ -293,31 +293,6 @@ names(PB_i) = names(QB_i) = names(B_i) = names(EE_i) = names(type) = names(U_i) 
   dimnames(DC_ij) = dimnames(X_ij) = list("Prey"=taxa, "Predator"=taxa)
   
 # Run model
-out0 = ecostate( taxa = taxa,
-                years = years,
-                catch = Catch,
-                biomass = Biomass,
-                PB = PB_i,
-                QB = QB_i,
-                DC = DC_ij,
-                B = B_i,
-                EE = EE_i,
-                X = X_ij,
-                type = type,
-                U = U_i,
-                fit_B = fit_B,
-                fit_Q = fit_Q,
-                fit_eps = fit_delta,
-                fit_B0 = fit_B0,
-                control = ecostate_control( nlminb_loops = 0,
-                                            getsd = FALSE ) )
-
-# Estimate logPB
-pars = out0$tmb_inputs$p
-map = out0$tmb_inputs$map
-#map$Xprime_ij = factor( rep(1,n_taxa) %o% ifelse(type=="auto",NA,1) )
-
-# Run model
 out_bivar = ecostate( taxa = taxa,
                 years = years,
                 catch = Catch,
@@ -334,8 +309,10 @@ out_bivar = ecostate( taxa = taxa,
                 fit_Q = fit_Q,
                 fit_eps = fit_delta,
                 fit_B0 = fit_B0,
-                control = ecostate_control( map = map,
-                                            tmb_par = pars ) )
+                control = ecostate_control() )
+
+# print output to terminal
+out_bivar
 ```
 
 We can then calculate and visualize how this changes the production function:
@@ -359,6 +336,139 @@ matplot( x=x, y=cbind(yhat,yhat_bivar), lwd=3, col=c("red","blue"),
 legend( "topright", fill=c("black","red","blue"), 
         legend=c("True","1-species","2-species"), bty="n")
 ```
+
+## Age-structured model
+
+Additionally, we could fit this model while also tracking abundance, average weight, and consumption for each age of the target species.  We do this by including a single stanza.  This then allows us to extract a time-series of average age and average weight.  
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Inputs
+taxa = c( "prey", "target" )
+n_taxa = length(taxa)
+PB_i = c( 5, 0.1 )
+QB_i = c( NA, 0.5 )
+DC_ij = matrix( c(0,0,1,0), nrow=2 )
+X_ij = matrix( 2, nrow=2, ncol=2 )
+U_i = c( 0.2, 0.2 )
+type = c( "auto", "hetero" )
+EE_i = c( 1, NA ) 
+B_i = c( NA, 1 )
+
+# Settings: specify what parameters to estimate
+fit_delta = "target"   # process errors
+fit_Q = "target"       # catchability coefficient
+fit_B0 = c()      # non-equilibrium initial condition
+fit_B = "target"       # equilibrium biomass
+
+# Label EwE inputs for each taxon as expected (so users can easily change taxa)
+names(PB_i) = names(QB_i) = names(B_i) = names(EE_i) = names(type) = names(U_i) = taxa
+  dimnames(DC_ij) = dimnames(X_ij) = list("Prey"=taxa, "Predator"=taxa)
+  
+# Run model
+out_stanzas = ecostate( taxa = taxa,
+                years = years,
+                catch = Catch,
+                biomass = Biomass,
+                PB = PB_i,
+                QB = QB_i,
+                DC = DC_ij,
+                B = B_i,
+                EE = EE_i,
+                X = X_ij,
+                type = type,
+                U = U_i,
+                fit_B = fit_B,
+                fit_Q = fit_Q,
+                fit_eps = fit_delta,
+                fit_B0 = fit_B0,
+                control = ecostate_control(),
+                settings = stanza_settings( taxa = taxa,
+                                            stanza_groups = c("target"="age_structured"),
+                                            K = c("age_structured" = 0.1),
+                                            Wmat = c("age_structured" = (2/3)^3),
+                                            d = c("age_structured" = 2/3),
+                                            Amax = c("target" = 30),
+                                            SpawnX = c("age_structured" = 2)
+                                           ))
+
+# print output to terminal
+out_stanzas
+
+#
+meanage_t = meanweight_t = rep(NA, length(years))
+for(t in seq_along(years)){
+  meanage_t[t] = weighted.mean( x=1:30, w=out_stanzas$rep$Y_tzz[t,,'NageS'] )
+  meanweight_t[t] = weighted.mean( x=out_stanzas$rep$Y_tzz[t,,'WageS'], 
+                                   w=out_stanzas$rep$Y_tzz[t,,'NageS'] )
+}
+par( mfrow=c(2,1), mar=c(3,4,2,1) )
+plot( x=years, y=meanage_t, lwd=2, type="l", main="Mean age" )
+plot( x=years, y=meanweight_t, lwd=2, type="l", main="Mean weight" )
+```
+
+In this age-structured production model, mean age decreases with increased fishing, but mean weight increases due to compensatory growth as the ratio of forage to predator increases.  
+
+## Multi-stanza age-structured production model
+
+Finally, we could fit a model with three variables, representing a forage species and two age-structured "stanzas" for the focal species.  Here, we specify identical diet but varying bioenergetics by size:
+
+```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
+# Inputs
+taxa = c( "prey", "stage1", "stage2" )
+n_taxa = length(taxa)
+PB_i = c( 5, 1, 0.1 )
+QB_i = c( NA, NA, 0.5 )
+DC_ij = cbind( "prey"=c(0,0,0), "stage1"=c(1,0,0), "stage2"=c(1,0,0)  )
+X_ij = matrix( 2, nrow=length(taxa), ncol=length(taxa) )
+U_i = c( 0.2, 0.2, 0.2 )
+type = c( "auto", "hetero", "hetero" )
+EE_i = c( 1, NA, NA ) 
+B_i = c( NA, NA, 1 )
+
+# Settings: specify what parameters to estimate
+fit_delta = c("stage1","stage2")   # process errors
+fit_Q = "stage2"       # catchability coefficient
+fit_B0 = c()      # non-equilibrium initial condition
+fit_B = "stage2"       # equilibrium biomass
+
+# Label EwE inputs for each taxon as expected (so users can easily change taxa)
+names(PB_i) = names(QB_i) = names(B_i) = names(EE_i) = names(type) = names(U_i) = taxa
+  dimnames(DC_ij) = dimnames(X_ij) = list("Prey"=taxa, "Predator"=taxa)
+
+# Run model
+out_trivar = ecostate( 
+  taxa = taxa,
+  years = years,
+  catch = data.frame("Mass"=Catch[,1],"Year"=Catch[,2],"Taxon"="stage2"),
+  biomass = data.frame("Mass"=Biomass[,1],"Year"=Biomass[,2],"Taxon"="stage2"),
+  PB = PB_i,
+  QB = QB_i,
+  DC = DC_ij,
+  B = B_i,
+  EE = EE_i,
+  X = X_ij,
+  type = type,
+  U = U_i,
+  fit_B = fit_B,
+  fit_Q = fit_Q,
+  fit_eps = fit_delta,
+  fit_B0 = fit_B0,
+  control = ecostate_control(),
+  settings = stanza_settings( 
+    taxa = taxa,
+    stanza_groups = c("stage1"="age_structured", "stage2"="age_structured"),
+    K = c("age_structured" = 0.1),
+    Wmat = c("age_structured" = (2/3)^3),
+    d = c("age_structured" = 2/3),
+    Amax = c("stage1" = 2, "stage2" = 30),
+    SpawnX = c("age_structured" = 2) )
+)
+
+# print output to terminal
+out_trivar
+```
+
+The model includes process-errors in the first-stage (eggs to recruits, from age-0 to age-2) and the second stage (age-2 onward), although the variance for stage-1 collapses to zero in this simulation replicate.  
 
 ## Comparison with other models
 
@@ -402,7 +512,7 @@ bet1 = fit_jabba(jbinput, quickmcmc=TRUE)
 jbplot_cpuefits(bet1)
 ```
 
-Comparing the two shows that SPICT and EcoState both have errors in estimating population scale, presumably due to mis-specifying the production function: 
+Comparing the two shows that SPICT, JABBA, and all configurations of EcoState have errors in estimating population scale, presumably due to mis-specifying the production function.  As expected, the age-structured and 2-species EcoState models result in identical estimates, where the age-structured version also provides auxiliary information about changes in average age and size.
 
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 # Compare estimates
@@ -410,6 +520,8 @@ knitr::kable(rbind(
   "True" = c("q" = q, "K"=K, "MSY"=true_msy),
   "EcoState 1-species" = c(exp(out$opt$par[c('logq_i','logB_i')]),msy2),
   "EcoState 2-species" = c(exp(out_bivar$opt$par[c('logq_i','logB_i')]),msy_bivar),
+  "EcoState age-structured" = c(exp(out_stanzas$opt$par[c('logq_i','logB_i')]),NA),
+  "EcoState multi-stanza" = c(exp(out_trivar$opt$par[c('logq_i','logB_i')]),NA),
   "SPiCT" = c(res$value[c('q','K','MSY')]),
   "JABBA" = c(bet1$pars[c('q','K'),'Median'],bet1$estimates['MSY','mu'])
 ), digits=3)
