@@ -96,9 +96,8 @@ function( p ) {
     Y_tzz[t,,] = Y_zz
 
     #
-    Bnew_s2 = get_stanza_total( logQB_i = p$logQB_i,
-                               stanza_data = stanza_data,
-                               Y_zz = p_t$Y_zz )
+    Bnew_s2 = get_stanza_total( stanza_data = stanza_data,
+                                Y_zz = p_t$Y_zz )
     Bnew_i = proj$y[nrow(proj$y),seq_len(n_species)]
     Bnew_i[p_t$stanzainfo_s2z[,'s']] = Bnew_s2
 
