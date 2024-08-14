@@ -102,7 +102,9 @@ function( Time,
     #M2_i = (DC_ij %*% (B_i*QB_i))[,1] / B_i
     # Bundle and return
     Return = list( B_i = B_i, 
-                   EE_i = EE_i, 
+                   EE_i = EE_i,
+                   PB_i = PB_i, 
+                   QB_i = QB_i, # For filled in stanza values 
                    GE_i = GE_i, 
                    m0_i = m0_i, 
                    M0_i = M0_i, 

@@ -504,9 +504,9 @@ function( x,
   # Params
   out1 = data.frame( 
     "type" = x$internal$type_i,
-    "QB" = exp(x$internal$parhat[['logQB_i']]),
-    "PB" = exp(x$internal$parhat[['logPB_i']]),
     # Use out_initial so it includes add_equilibrium values
+    "QB" = x$rep$out_initial$QB_i,
+    "PB" = x$rep$out_initial$PB_i,
     "B" = x$rep$out_initial$B_i,      
     "EE" = x$rep$out_initial$EE_i,
     "U" = x$internal$parhat[["U_i"]]

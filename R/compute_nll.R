@@ -196,6 +196,7 @@ function( p ) {
   REPORT( jnll )
   REPORT( TL_ti )
   REPORT( Y_tzz )
+  REPORT( stanza_data )
 
   ADREPORT( B_ti )
   ADREPORT( Chat_ti )
