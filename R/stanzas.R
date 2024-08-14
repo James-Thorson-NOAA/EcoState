@@ -49,7 +49,7 @@ function( settings ){
     stanzainfo_t2z = stanzainfo_s2z[which(stanzainfo_s2z[,'g2']==g2),,drop=FALSE]   # drop=FALSE in case only one stanza for single multigroup
 
     #
-    t2_a = sapply( AGE, FUN=\(a){sum(a>stanzainfo_t2z[,'amax'])} ) + 1
+    t2_a = sapply( AGE, FUN=\(a){sum(a>=stanzainfo_t2z[,'amax'])} ) + 1
     t2_a = ifelse( t2_a > sum(stanzainfo_s2z[,'g2']==g2), sum(stanzainfo_s2z[,'g2']==g2), t2_a )
 
     # Stack
