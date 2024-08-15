@@ -60,9 +60,8 @@ function( ecoparams,
     A[cbind(seq_along(B_i),seq_along(B_i))] = diag.a
     
     #
-    QBDC = DC_ij * ( rep(1,length(B_i)) %*% t(QB_i) ) # QB_i[col(DC_ij)] # ( rep(1,n_species) %*% t(QB_i) ) # 
+    QBDCa = DC_ij * ( rep(1,length(B_i)) %*% t(QB_i*noB_i) ) # QB_i[col(DC_ij)] # ( rep(1,n_species) %*% t(QB_i) ) # 
     # QBDC[is.na(QBDC)] = 0    # Not necessary given that all(!is.na(DC_ij))
-    QBDCa = QBDC * ( rep(1,length(B_i)) %*% t(noB_i) ) # noB_i[col(as.matrix(QBDC))] # ( rep(1,n_species) %*% t(noB_i) ) # 
     A = A - QBDCa 
     
     # Generalized inverse does the actual solving
@@ -91,7 +90,7 @@ function( ecoparams,
   m0_i = PB_i * (1 - EE_i)
   
   # Calculate detritus turnover
-  detritus_input = sum(Qe_ij * ( rep(1,length(B_i)) %*% t(U_i) )) + sum( m0_i * B_i )
+  detritus_input = sum(Qe_ij %*% matrix(U_i)) + sum( m0_i * B_i )
   detritus_output = sum(Qe_ij[which_detritus,])
   detritus_turnover = (detritus_input-detritus_output) / B_i[which_detritus]        # detrius_input - detritus_output - B*detritus_turnover = 0
   
