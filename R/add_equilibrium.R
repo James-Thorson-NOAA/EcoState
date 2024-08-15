@@ -19,6 +19,11 @@ function( ecoparams,
           noB_i,
           type_i ) { 
   
+  # Necessary in packages
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+  "diag<-" <- ADoverload("diag<-")                    
+
   # Guidelines
   # no ifelse() or which() for advectors
   # rowSums(C_ij, na.rm=TRUE) seems to break RTMB
@@ -56,13 +61,13 @@ function( ecoparams,
     # 
     diag.a = B_i * PB_i
     diag.a[which(noB_i==1)] = EE_i[which(noB_i==1)] * PB_i[which(noB_i==1)]
-    # diag(vector) doesn't work when length(vector)=1, so using explicit construction
-    A = matrix(0, nrow=length(B_i), ncol=length(B_i))
-    A[cbind(seq_along(B_i),seq_along(B_i))] = diag.a
+    A = diag( x=diag.a, nrow=length(B_i) )
     
     #
-    QBDCa = DC_ij * ( rep(1,length(B_i)) %*% t(QB_i*noB_i) ) # QB_i[col(DC_ij)] # ( rep(1,n_species) %*% t(QB_i) ) # 
-    # QBDC[is.na(QBDC)] = 0    # Not necessary given that all(!is.na(DC_ij))
+    D = diag( x=QB_i*noB_i, nrow=length(B_i) )
+    #D = Matrix::Diagonal( x=QB_i*noB_i )
+    QBDCa = DC_ij %*% D 
+    #QBDCa = DC_ij * ( rep(1,length(B_i)) %*% t(QB_i*noB_i) ) # QB_i[col(DC_ij)] # ( rep(1,n_species) %*% t(QB_i) ) # 
     A = A - QBDCa 
     
     # Generalized inverse does the actual solving
@@ -70,8 +75,8 @@ function( ecoparams,
     # A is singular when some B_i are NA
     #x_i = MASS::ginv(A) %*% b_i
     #x_i = pseudoinverse(A) %*% b_i
-    #x_i = solve(A, b_i) # solve(A) %*% b_i      
-    x_i = solve(A) %*% b_i # solve(A) %*% b_i      
+    x_i = solve(A, b_i) # solve(A) %*% b_i      
+    #x_i = solve(A) %*% b_i # solve(A) %*% b_i      
     
     # Substitute into vectors
     EE_i[which(noB_i==0)] = x_i[which(noB_i==0)]
@@ -85,6 +90,8 @@ function( ecoparams,
   }
   # Equilibrium consumption
   Qe_ij = DC_ij * ( rep(1,length(B_i)) %*% t(B_i * QB_i) )
+  #D = diag( x=B_i * QB_i, nrow=length(B_i) )
+  #Qe_ij = DC_ij %*% D 
   # Growth efficiency, Lucy-2020 Eq. 2
   GE_i = PB_i / QB_i
   # Natural mortality

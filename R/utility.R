@@ -77,3 +77,23 @@ ginv <- RTMB::ADjoint(function(X) {
     dim(Y) <- dim(dY) <- c(n,n)
     -t(Y)%*%dY%*%t(Y)
 }, name="ginv")
+
+#' @title Elementwise product of sparse and dense matrices
+#' @description Calculate elementwise product of sparse and dense matrices
+#' @param Msparse sparse matrix
+#' @param Mdense dense matrix
+#' @export
+elementwise_product <- function(Msparse, Mdense) {
+  # Necessary in packages
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+  triplet = mat2triplet(Msparse)
+  x = triplet$x # + Mdense[cbind(triplet$i,triplet$j)] 
+  #p = Msparse@p
+  for( i in seq_along(x)) x[i] = x[i] + Mdense[triplet$i[i],triplet$j[i]] 
+  out = sparseMatrix( i=triplet$i, j=triplet$j, x=x )        # + Mdense[cbind(x$i,x$j)]
+  as(out,"CsparseMatrix")
+  #Msparse@x = x
+  #Msparse
+}
+
