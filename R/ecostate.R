@@ -313,7 +313,7 @@ function( taxa,
     if( isFALSE(control$quiet) ) message("Running nlminb_loop #", i)
     opt = nlminb( start = opt$par,
                   objective = obj$fn,
-                  gradient = obj$gr,
+                  gradient = list(obj$gr,NULL)[[ifelse(control$use_gradient,1,2)]],
                   control = list( eval.max = control$eval.max,
                                   iter.max = control$iter.max,
                                   trace = control$trace ) )
@@ -451,6 +451,7 @@ function( nlminb_loops = 1,
           scale_solver = c("joint", "simple"),
           inverse_method = c("Standard", "Penrose_moore"),
           tmbad.sparse_hessian_compress = 1,
+          use_gradient = TRUE,
           start_tau = 0.001 ){
 
   #
@@ -482,6 +483,7 @@ function( nlminb_loops = 1,
     inverse_method = inverse_method,
     process_error = process_error,
     tmbad.sparse_hessian_compress = tmbad.sparse_hessian_compress,
+    use_gradient = use_gradient,
     start_tau = start_tau
   ), class = "ecostate_control" )
 }
