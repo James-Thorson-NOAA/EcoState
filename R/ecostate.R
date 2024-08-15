@@ -146,6 +146,9 @@ function( taxa,
   colsums = colSums(DC_ij)
   DC_ij = DC_ij / outer( rep(1,nrow(DC_ij)), ifelse(colsums==0,1,colsums) )
   
+  # Convert to sparse diet matrix
+  #DC_ij = Matrix(DC_ij)
+  
   # Convert long-form `catch` to wide-form Cobs_ti
   Cobs_ti = tapply( catch[,'Mass'], FUN=mean, INDEX = list(
                     factor(catch[,'Year'],levels=years),
@@ -260,6 +263,7 @@ function( taxa,
   data = local({
                   Bobs_ti = Bobs_ti
                   Cobs_ti = Cobs_ti
+                  #DC_ij = DC_ij
                   n_steps = control$n_steps 
                   if( control$integration_method == "ABM"){
                     project_vars = abm3pc_sys 
@@ -292,6 +296,13 @@ function( taxa,
   })
   environment(dBdt) <- data2
   environment(project_stanzas) <- data2    # project_stanzas(.) calls dBdt(.)
+
+  # 
+  #data3 = local({
+  #                DC_ij = DC_ij
+  #                environment()
+  #})
+  #environment(add_equilibrium) <- data3
 
 
   # Make TMB object

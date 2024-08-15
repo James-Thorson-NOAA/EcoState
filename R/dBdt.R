@@ -56,7 +56,7 @@ function( Time,
   Ypred_ij = rep(1,n_species) %*% t(Ypred_j)
   Yprey_i = Bt_i / B_i
   Yprey_ij = Yprey_i %*% t(rep(1,n_species))
-  U_ij = rep(1,n_species) %*% t(U_i)
+  #U_ij = rep(1,n_species) %*% t(U_i)
   # Consumption = Equilibrium * Pred_functional_response * Prey_functional_response
   Q_ij = Qe_ij * ( X_ij * Ypred_ij / ( X_ij - 1 + Ypred_ij ) ) * Yprey_ij
 
@@ -67,7 +67,8 @@ function( Time,
   denominator = ( X_ij[cbind(which_primary,which_primary)] - 1 + Yprey_i[which_primary] )
   G_i[which_primary] = PB_i[which_primary] * B_i[which_primary] * numerator / denominator
   # Replace for detritus
-  G_i[which_detritus] = sum(Q_ij * U_ij) + sum(m0_i * Bt_i)
+  #G_i[which_detritus] = sum(Q_ij * U_ij) + sum(m0_i * Bt_i)
+  G_i[which_detritus] = sum(Q_ij %*% matrix(U_i)) + sum(m0_i * Bt_i)
   
   # Mortalities
   M0_i = m0_i * Bt_i
