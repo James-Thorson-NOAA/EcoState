@@ -47,10 +47,11 @@ function( ecoparams,
     #browser()
     QB_i[c(which_primary,which_detritus)] = 0
     BioQB = B_i * QB_i
-    C_ij  = DC_ij * ( rep(1,length(B_i)) %*% t(BioQB) ) # BioQB[col(DC_ij)] # ( rep(1,n_species) %*% t(BioQB) ) # 
-    b_i = rowSums(C_ij[,which(noB_i==0),drop=FALSE])    # NAs for missing B_i
-    #b_i = ifelse( b_i==0, 1e-10, b_i )
-    #b_i = c(17.5, 10.5, 2, 2, 0)
+    
+    # Replace rowsums
+    #C_ij  = DC_ij * ( rep(1,length(B_i)) %*% t(BioQB) ) # BioQB[col(DC_ij)] # ( rep(1,n_species) %*% t(BioQB) ) # 
+    #b_i = rowSums(C_ij[,which(noB_i==0),drop=FALSE])    # NAs for missing B_i
+    b_i = DC_ij[,which(noB_i==0),drop=FALSE] %*% matrix(BioQB[which(noB_i==0)])
     
     # 
     diag.a = B_i * PB_i
