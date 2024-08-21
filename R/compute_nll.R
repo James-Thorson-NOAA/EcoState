@@ -76,6 +76,7 @@ function( p ) {
     names(y0) = paste0("var_",seq_along(y0))
 
     # Project dynamics
+    #browser()
     proj = project_vars(
           f = dBdt,
           a = 0, 
@@ -128,6 +129,7 @@ function( p ) {
     }else{
       Chat_ti[t,] = Bmean_ti[t,] * (1 - exp( -1 * exp(p$logF_ti[t,]) ))
     }
+    DC_ij = as.matrix(DC_ij)
     M2_ti[t,] = (DC_ij %*% (Bmean_ti[t,] * exp(logQB_i))) / Bmean_ti[t,]
 
     # Record more using midpoint biomass Bmean_ti
@@ -137,16 +139,18 @@ function( p ) {
                 what = "stuff" )
 
     # Must calculate during loop because G_ti is NA for t=1
+    #tmp = adsparse_to_matrix(out$Q_ij)
+    tmp = out$Q_ij
     G_ti[t,] = out$G_i
     g_ti[t,] = out$g_i
     M_ti[t,] = out$M_i
     m_ti[t,] = out$m_i
     M2_ti[t,] = out$M2_i
     m2_ti[t,] = out$m2_i
-    Q_tij[t,,] = out$Q_ij
+    Q_tij[t,,] = tmp
     dBdt0_ti[t,] = out$dBdt0_i
     # Compute trophic level
-    TL_ti[t,] = compute_tracer( out$Q_ij, 
+    TL_ti[t,] = compute_tracer( Q_ij = tmp,
                                 inverse_method = inverse_method,
                                 type_i = type_i,
                                 tracer_i = rep(1,n_species) )
@@ -198,19 +202,21 @@ function( p ) {
   REPORT( Y_tzz )
   REPORT( stanza_data )
 
-  ADREPORT( B_ti )
-  ADREPORT( Chat_ti )
-  ADREPORT( Bexp_ti )
-  ADREPORT( G_ti )
-  ADREPORT( g_ti )
-  ADREPORT( M_ti )
-  ADREPORT( m_ti )
-  ADREPORT( F_ti )
-  ADREPORT( Z_ti )
-  ADREPORT( dBdt0_ti )
-  #if( inverse_method=="Standard" ){
+  if( sdreport_detail >= 1 ){
+    ADREPORT( B_ti )
+  }
+  if( sdreport_detail >= 2 ){
+    ADREPORT( Chat_ti )
+    ADREPORT( Bexp_ti )
+    ADREPORT( G_ti )
+    ADREPORT( g_ti )
+    ADREPORT( M_ti )
+    ADREPORT( m_ti )
+    ADREPORT( F_ti )
+    ADREPORT( Z_ti )
+    ADREPORT( dBdt0_ti )
     ADREPORT( TL_ti )
-  #}
-  
+  }
+
   return(jnll)
 }

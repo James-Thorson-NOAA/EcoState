@@ -42,6 +42,7 @@
 #'
 #' @importFrom TMB config
 #' @importFrom checkmate assertDouble assertFactor assertCharacter
+#' @importFrom Matrix Matrix Diagonal sparseMatrix
 #'
 #' @details
 #' All \code{taxa} must be included in \code{QB}, \code{PB}, \code{B}, and \code{DC},
@@ -147,7 +148,7 @@ function( taxa,
   DC_ij = DC_ij / outer( rep(1,nrow(DC_ij)), ifelse(colsums==0,1,colsums) )
   
   # Convert to sparse diet matrix
-  #DC_ij = Matrix(DC_ij)
+  #DC_ij = Matrix::Matrix(DC_ij)
   
   # Convert long-form `catch` to wide-form Cobs_ti
   Cobs_ti = tapply( catch[,'Mass'], FUN=mean, INDEX = list(
@@ -281,6 +282,7 @@ function( taxa,
                   inverse_method = control$inverse_method
                   type_i = type_i
                   process_error = control$process_error
+                  sdreport_detail = control$sdreport_detail
                   settings = settings
                   stanza_data = stanza_data
                   environment()
@@ -430,6 +432,8 @@ function( taxa,
 #' @param F_type whether to integrate catches along with biomass (\code{"integrated"})
 #'        or calculate catches from the Baranov catch equation applied to average 
 #'        biomass (\code{"averaged"})
+#' @param sdreport_detail increasing value increases the set of derived quantities
+#'        that are included when calculating standard errors
 #' @param tmbad.sparse_hessian_compress passed to [TMB::config()], and enabling 
 #'        an experimental feature to save memory when first computing the inner
 #'        Hessian matrix.  Using \code{tmbad.sparse_hessian_compress=1} seems
@@ -459,6 +463,7 @@ function( nlminb_loops = 1,
           process_error = c("epsilon", "alpha"),
           n_steps = 10,
           F_type = c("integrated", "averaged"),
+          sdreport_detail = 1,
           scale_solver = c("joint", "simple"),
           inverse_method = c("Standard", "Penrose_moore"),
           tmbad.sparse_hessian_compress = 1,
@@ -490,6 +495,7 @@ function( nlminb_loops = 1,
     integration_method = integration_method,
     n_steps = n_steps,
     F_type = F_type,
+    sdreport_detail = sdreport_detail,
     scale_solver = scale_solver,
     inverse_method = inverse_method,
     process_error = process_error,

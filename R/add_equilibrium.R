@@ -23,13 +23,14 @@ function( ecoparams,
   "c" <- ADoverload("c")
   "[<-" <- ADoverload("[<-")
   "diag<-" <- ADoverload("diag<-")                    
+  #require(Matrix)
 
   # Guidelines
   # no ifelse() or which() for advectors
   # rowSums(C_ij, na.rm=TRUE) seems to break RTMB
   # Don't use n_species, or redefine it locally (using former for now)
   
-  # Indicators 
+  # Indicators
   which_primary = which( type_i=="auto" )
   which_detritus = which( type_i=="detritus" )
   
@@ -64,8 +65,15 @@ function( ecoparams,
     A = diag( x=diag.a, nrow=length(B_i) )
     
     #
-    D = diag( x=QB_i*noB_i, nrow=length(B_i) )
+    #D = as(D, "dgCMatrix")
     #D = Matrix::Diagonal( x=QB_i*noB_i )
+    #x = rep(0, length(B_i))
+    #x[1] = noB_i[1] + QB_i[1] #  + noB_i[1]
+    #x = c( advector(0), QB_i * noB_i )[1L+seq_along(B_i)]
+    #D = Matrix::sparseMatrix( i=seq_along(B_i), j=seq_along(B_i), x=x )   # QB_i*noB_i
+    #D = Matrix::sparseMatrix( i=seq_along(B_i), p=c(0,seq_along(B_i)), x=x )   # QB_i*noB_i
+    #browser()
+    D = diag( x=QB_i*noB_i, nrow=length(B_i) )
     QBDCa = DC_ij %*% D 
     #QBDCa = DC_ij * ( rep(1,length(B_i)) %*% t(QB_i*noB_i) ) # QB_i[col(DC_ij)] # ( rep(1,n_species) %*% t(QB_i) ) # 
     A = A - QBDCa 
@@ -90,18 +98,24 @@ function( ecoparams,
   }
   # Equilibrium consumption
   Qe_ij = DC_ij * ( rep(1,length(B_i)) %*% t(B_i * QB_i) )
-  #D = diag( x=B_i * QB_i, nrow=length(B_i) )
-  #Qe_ij = DC_ij %*% D 
+  #D = AD(Matrix::Diagonal(n=length(B_i)))
+  #D@x = B_i * QB_i
+  #Qe_ij = AD(DC_ij) %*% D
   # Growth efficiency, Lucy-2020 Eq. 2
   GE_i = PB_i / QB_i
   # Natural mortality
   m0_i = PB_i * (1 - EE_i)
+  #Qe_ij = adsparse_to_matrix(Qe_ij)
   
-  # Calculate detritus turnover
-  detritus_input = sum(Qe_ij %*% matrix(U_i)) + sum( m0_i * B_i )
-  detritus_output = sum(Qe_ij[which_detritus,])
-  detritus_turnover = (detritus_input-detritus_output) / B_i[which_detritus]        # detrius_input - detritus_output - B*detritus_turnover = 0
-  
+  # Calculate detritus turnover if needed
+  if( length(which_detritus)>0 ){
+    detritus_input = sum(Qe_ij %*% matrix(U_i)) + sum( m0_i * B_i )
+    detritus_output = sum(Qe_ij[which_detritus,])
+    detritus_turnover = (detritus_input-detritus_output) / B_i[which_detritus]        # detrius_input - detritus_output - B*detritus_turnover = 0
+  }else{
+    detritus_turnover = 0
+  }
+
   #
   new_list = list(
     Qe_ij = Qe_ij,

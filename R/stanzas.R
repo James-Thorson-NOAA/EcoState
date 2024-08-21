@@ -325,9 +325,11 @@ function( p,
               #State = out$B_g2
               Pars = p,
               what = "all")
+    FoodGain = colSums(dBdt_step$Q_ij)
+    #FoodGain = (t(rep(1,length(dBdt_step$G_i))) %*% dBdt_step$Q_ij)[1,]
     Y_zz = update_stanzas( p = p,
                   stanza_data = stanza_data,
-                  FoodGain_s = colSums(dBdt_step$Q_ij),
+                  FoodGain_s = FoodGain,
                   LossPropToB_s = dBdt_step$G_i,
                   F_s = exp(p$logF_i),
                   STEPS_PER_YEAR = STEPS_PER_YEAR )

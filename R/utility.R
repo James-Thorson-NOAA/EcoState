@@ -83,17 +83,29 @@ ginv <- RTMB::ADjoint(function(X) {
 #' @param Msparse sparse matrix
 #' @param Mdense dense matrix
 #' @export
-elementwise_product <- function(Msparse, Mdense) {
-  # Necessary in packages
+elementwise_product = function(Msparse, Mdense){
   "c" <- ADoverload("c")
   "[<-" <- ADoverload("[<-")
-  triplet = mat2triplet(Msparse)
-  x = triplet$x # + Mdense[cbind(triplet$i,triplet$j)] 
-  #p = Msparse@p
-  for( i in seq_along(x)) x[i] = x[i] + Mdense[triplet$i[i],triplet$j[i]] 
-  out = sparseMatrix( i=triplet$i, j=triplet$j, x=x )        # + Mdense[cbind(x$i,x$j)]
-  as(out,"CsparseMatrix")
-  #Msparse@x = x
-  #Msparse
+  if(!("p" %in% names(attributes(Msparse)))) browser()
+  if(length(Msparse@x)>0){
+    Mout = Msparse
+    j = rep( seq_len(nrow(Msparse)), times=diff(Msparse@p) )
+    Mout@x = Msparse@x + Mdense[cbind(Msparse@i+1, j)]
+  }else{
+    Mout = Matrix::sparseMatrix(i=1, j=1, x=0)
+  }
+  return(Mout)
 }
+
+#' @export
+adsparse_to_matrix = function(x){
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+  y = matrix(0, nrow=nrow(x), ncol=ncol(x))
+  j = rep( seq_len(nrow(x)), times=diff(x@p) )
+  y[cbind(x@i+1, j)] = x@x
+  y
+}
+
+#
 
