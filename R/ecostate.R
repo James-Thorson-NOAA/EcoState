@@ -41,7 +41,7 @@
 #'        settings.
 #'
 #' @importFrom TMB config
-#' @importFrom checkmate assertDouble assertFactor assertCharacter
+#' @importFrom checkmate assertDouble assertFactor assertCharacter assertList
 #' @importFrom Matrix Matrix Diagonal sparseMatrix
 #'
 #' @details
@@ -54,8 +54,9 @@
 ecostate <-
 function( taxa,
           years,
-          catch,
-          biomass,
+          catch = data.frame("Year"=numeric(0),"Mass"=numeric(0),"Taxon"=numeric(0)),
+          biomass = data.frame("Year"=numeric(0),"Mass"=numeric(0),"Taxon"=numeric(0)),
+          agecomp = list(),
           PB,
           QB,
           B,
@@ -72,7 +73,11 @@ function( taxa,
           settings = stanza_settings(taxa=taxa),
           control = ecostate_control() ){
 
-  # 
+  # Necessary in packages
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+
+  #
   start_time = Sys.time()
   if( !all(c(fit_B,fit_Q,fit_B0,fit_eps,fit_EE) %in% taxa) ){
     if(isFALSE(control$silent)) warning("Some `fit_B`, `fit_Q`, `fit_B0`, or `fit_eps` not in `taxa`")
@@ -164,6 +169,14 @@ function( taxa,
                     factor(biomass[,'Taxon'],levels=taxa) )
                   )
   
+  #
+  assertList( agecomp )
+  Nobs_ta_g2 = agecomp[match(names(agecomp),settings$unique_stanza_groups)]  # match works for empty list
+  # ADD MORE CHECKS
+
+  # number of selex params
+  n_selex = length(Nobs_ta_g2) * switch( settings$comp_weight, "multinom" = 2, "dir" = 3, "dirmult" = 3 )
+
   # parameter list
   p = list( delta_i = rep(log(1), n_species),
             ln_sdB = log(0.1), 
@@ -179,7 +192,9 @@ function( taxa,
             epsilon_ti = array( 0, dim=c(0,n_species) ),
             alpha_ti = array( 0, dim=c(0,n_species) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
-            logq_i = rep( log(1), n_species) )      # , PB_i=PB_i
+            logq_i = rep( log(1), n_species),
+            selex_z = rep(1, n_selex)  # CHANGE WITH NUMBER OF PARAMETERS
+  )      # , PB_i=PB_i
 
   # 
   map = list()
@@ -264,6 +279,8 @@ function( taxa,
   data = local({
                   Bobs_ti = Bobs_ti
                   Cobs_ti = Cobs_ti
+                  Nobs_ta_g2 = Nobs_ta_g2
+                  years = years
                   #DC_ij = DC_ij
                   n_steps = control$n_steps 
                   if( control$integration_method == "ABM"){
@@ -367,6 +384,7 @@ function( taxa,
     settings = settings,
     Bobs_ti = Bobs_ti,
     Cobs_ti = Cobs_ti,
+    Nobs_ta_g2 = Nobs_ta_g2,
     # Avoid stuff that's in parhat
     #logPB_i = logPB_i, 
     #logQB_i = logQB_i, 

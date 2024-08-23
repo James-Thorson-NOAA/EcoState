@@ -3,6 +3,9 @@
 make_stanza_data <-
 function( settings ){
 
+  # Necessary in packages
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
   # Indexing
   s_s2 = match(names(settings$stanza_groups), settings$taxa)
   n_s2 = length(s_s2)
@@ -56,6 +59,7 @@ function( settings ){
     Xg2_zz = cbind(
       g2 = g2,
       AGE = AGE,
+      age_class = floor(AGE),
       t2 = t2_a,
       is_lead = Leading_s2[t2_a]
     )
@@ -97,9 +101,11 @@ function( p,
 
   # Globals
   vbm_g2 = (1 - 3 * K_g2 / settings$STEPS_PER_YEAR)
-  #pos = function(x) ifelse(x>0,x,0)
-  pos = function(x) (x + sqrt(x^2))/2
-
+  pos = function(x){
+    "c" <- ADoverload("c")
+    "[<-" <- ADoverload("[<-")
+    0.5*(abs(x)+x)
+  }
   ################## EXPERIMENT WITH RTMB
   # EASIER TO LOOP THROUGH STANZAS
   Y_zz = matrix(nrow=0, ncol=4)
@@ -140,8 +146,8 @@ function( p,
     NageS = SurvS * baseRzeroS[g2]
 
     #
-    baseEggsStanza[g2] = sum(pos(NageS * (WageS - Wmat_g2[g2])))
-    baseSpawnBio[g2] = sum(pos(NageS * (WageS - Wmat_g2[g2])))
+    baseEggsStanza[g2] = sum(NageS * pos(WageS - Wmat_g2[g2]))
+    baseSpawnBio[g2] = sum(NageS * pos(WageS - Wmat_g2[g2]))
 
     #
     s = stanzainfo_t2z[which_leading,'s']
@@ -202,6 +208,9 @@ function( p,
           #increase_age = TRUE,
           STEPS_PER_YEAR = 1 ){
 
+  # Necessary in packages
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
   # Globals
   vbm_g2 = (1 - 3 * stanza_data$stanzainfo_g2z[,'K'] / STEPS_PER_YEAR)
   SB_g2 = exp(p$logPB_i)[stanza_data$stanzainfo_s2z[,'s']] # Get it to be class-advector
@@ -214,14 +223,17 @@ function( p,
   # Increase age given plus group
   increase_vector = function(vec, plus_group="average"){
     "c" <- ADoverload("c")  # Necessary in packages
+    "[<-" <- ADoverload("[<-")
     out = c( 0, vec[-length(vec)] )
     out[length(out)] = out[length(out)] + vec[length(out)]
     if(plus_group=="average") out[length(out)] = out[length(out)] / 2
     return(out)
   }
-  #pos = function(x) ifelse(x>0,x,0)
-  pos = function(x) (x + sqrt(x^2))/2
-
+  pos = function(x){
+    "c" <- ADoverload("c")
+    "[<-" <- ADoverload("[<-")
+    0.5*(abs(x)+x)
+  }
   # Loop through stanza-variables
   # Only does a single STEP of STEPS_PER_YEAR: Allows p to have updated B_t for each step
   for( s2 in seq_len(nrow(stanza_data$stanzainfo_s2z)) ){
@@ -253,8 +265,7 @@ function( p,
   for( g2 in seq_len(stanza_data$n_g2) ){
     # Record SpawnBiomass
     which_z = which(X_zz[,'g2']==g2)
-    SB_g2[g2] = sum(pos(Y_zz[which_z,'NageS'] * pos(Y_zz[which_z,'WageS'] - Wmat_g2[g2])))
-    #if(isFALSE(inherits(SB_g2[g2],"advector"))) stop("check SB_g2")
+    SB_g2[g2] = sum(Y_zz[which_z,'NageS'] * pos(Y_zz[which_z,'WageS'] - Wmat_g2[g2]))
 
     # Plus-group
     Y_zz[which_z,'NageS'] = increase_vector(Y_zz[which_z,'NageS'], plus_group="add")
@@ -312,6 +323,10 @@ function( p,
           correct_errors = FALSE,
           record_steps = FALSE,
           STEPS_PER_YEAR ){
+
+  # Necessary in packages
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
 
   xset = seq( 1, nrow(y), length=STEPS_PER_YEAR+1)
   xset = round( rowMeans(cbind(xset[-length(xset)],xset[-1])) )
@@ -378,9 +393,15 @@ function( taxa,
           Wmat,
           Amax,
           SpawnX,
-          STEPS_PER_YEAR = 1 ){
+          STEPS_PER_YEAR = 1,
+          comp_weight = c("multinom","dir","dirmult") ){
+
+  # Necessary in packages
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
 
   #
+  comp_weight = match.arg(comp_weight)
   if(missing(stanza_groups)) stanza_groups = vector()
   unique_stanza_groups = setdiff(stanza_groups[taxa], NA)
   multigroup_taxa = names(stanza_groups)[which(stanza_groups %in% unique_stanza_groups)]
@@ -404,7 +425,8 @@ function( taxa,
     Wmat = Wmat,
     Amax = Amax,
     SpawnX = SpawnX,
-    STEPS_PER_YEAR = STEPS_PER_YEAR
+    STEPS_PER_YEAR = STEPS_PER_YEAR,
+    comp_weight = comp_weight
   ), class = "stanza_settings" )
 }
 

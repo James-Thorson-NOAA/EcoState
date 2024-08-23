@@ -107,5 +107,51 @@ adsparse_to_matrix = function(x){
   y
 }
 
-#
+#' @title Dirichlet-multinomial
+#' @description Allows data-weighting as parameter
+#' @examples
+#' library(RTMB)
+#' prob = rep(0.1,10)
+#' x = rmultinom( n=1, prob=prob, size=20 )[,1]
+#' f = function( ln_theta ) ddirmult(x, prob, ln_theta)
+#' f( 0 )
+#' F = MakeTape(f, 0)
+#' F$jacfun()(0)
+#'
+#' @export
+ddirmult <-
+function( x,
+          prob,
+          ln_theta,
+          log=TRUE ){
+
+  # Pre-processing
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+  Ntotal = sum(x)
+  p_exp = prob / sum(prob)
+  p_obs = x / Ntotal
+  dirichlet_Parm = exp(ln_theta) * Ntotal
+  logres = 0.0
+
+  # https://github.com/nmfs-stock-synthesis/stock-synthesis/blob/main/SS_objfunc.tpl#L306-L314
+  # https://github.com/James-Thorson/CCSRA/blob/master/inst/executables/CCSRA_v8.cpp#L237-L242
+  # https://www.sciencedirect.com/science/article/pii/S0165783620303696
+
+  # 1st term -- integration constant that could be dropped
+  logres = logres + lgamma( Ntotal+1 )
+  for( index in seq_along(x) ){
+    logres = logres - lgamma( Ntotal*p_obs[index] + 1.0 )
+  }
+
+  # 2nd term in formula
+  logres = logres + lgamma( dirichlet_Parm ) - lgamma( Ntotal+dirichlet_Parm )
+
+  # Summation in 3rd term
+  for( index in seq_along(x) ){
+    logres = logres + lgamma( Ntotal*p_obs[index] + dirichlet_Parm*p_exp[index] )
+    logres = logres - lgamma( dirichlet_Parm * p_exp[index] )
+  }
+  if(log){ return(logres) }else{ return(exp(logres)) }
+}
 
