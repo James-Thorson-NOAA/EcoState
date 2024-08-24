@@ -174,10 +174,14 @@ function( taxa,
   Nobs_ta_g2 = agecomp[match(names(agecomp),settings$unique_stanza_groups)]  # match works for empty list
   # ADD MORE CHECKS
 
+  #
+  stanza_data = make_stanza_data( settings )
+
   # number of selex params
   n_selex = length(Nobs_ta_g2) * switch( settings$comp_weight, "multinom" = 2, "dir" = 3, "dirmult" = 3 )
 
   # parameter list
+  #browser()
   p = list( delta_i = rep(log(1), n_species),
             ln_sdB = log(0.1), 
             ln_sdC = log(0.1),
@@ -193,7 +197,8 @@ function( taxa,
             alpha_ti = array( 0, dim=c(0,n_species) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
             logq_i = rep( log(1), n_species),
-            selex_z = rep(1, n_selex)  # CHANGE WITH NUMBER OF PARAMETERS
+            selex_z = rep(1, n_selex),  # CHANGE WITH NUMBER OF PARAMETERS
+            SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
   )      # , PB_i=PB_i
 
   # 
@@ -205,7 +210,8 @@ function( taxa,
   map$U_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
   map$Xprime_ij = factor( array(NA,dim=dim(p$Xprime_ij)) )
-  
+  map$SpawnX_g2 = factor( rep(NA,length(p$SpawnX_g2)) )
+
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
   p$logtau_i = ifelse(taxa %in% fit_eps, log(control$start_tau), NA)
@@ -271,9 +277,6 @@ function( taxa,
     message("Using `control$map`, so be cautious in constructing it")
     map = control$map
   }
-  
-  #
-  stanza_data = make_stanza_data( settings )
 
   # Load data in environment for function "compute_nll"
   data = local({

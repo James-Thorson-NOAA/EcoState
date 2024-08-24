@@ -74,7 +74,7 @@ function( settings ){
     stanzainfo_g2z = stanzainfo_g2z,
     X_zz = X_zz
   )
-  return(stanza_data)
+  return( stanza_data )
 }
 
 #' @export
@@ -92,7 +92,7 @@ function( p,
   K_g2 = stanza_data$stanzainfo_g2z[,'K']
   d_g2 = stanza_data$stanzainfo_g2z[,'d']
   Wmat_g2 = stanza_data$stanzainfo_g2z[,'Wmat']
-  SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
+  #SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
   plusage_g2 = stanza_data$stanzainfo_g2z[,'plusage']
   stanzainfo_s2z = stanza_data$stanzainfo_s2z
   stanzainfo_g2z = stanza_data$stanzainfo_g2z
@@ -215,7 +215,7 @@ function( p,
   vbm_g2 = (1 - 3 * stanza_data$stanzainfo_g2z[,'K'] / STEPS_PER_YEAR)
   SB_g2 = exp(p$logPB_i)[stanza_data$stanzainfo_s2z[,'s']] # Get it to be class-advector
   Wmat_g2 = stanza_data$stanzainfo_g2z[,'Wmat']
-  SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
+  #SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
   Y_zz = p$Y_zz
   X_zz = stanza_data$X_zz
   d_g2 = stanza_data$stanzainfo_g2z[,'d']
@@ -272,7 +272,7 @@ function( p,
     Y_zz[which_z,'WageS'] = increase_vector(Y_zz[which_z,'WageS'], plus_group="average")
 
     # Eggs
-    EggsStanza = SB_g2[g2] * SpawnX_g2[g2] / (SpawnX_g2[g2] - 1.0 + (SB_g2[g2] / p$baseSB_g2[g2]))
+    EggsStanza = SB_g2[g2] * p$SpawnX_g2[g2] / (p$SpawnX_g2[g2] - 1.0 + (SB_g2[g2] / p$baseSB_g2[g2]))
     # Apply to first age
     Y_zz[which_z[1],'NageS'] = p$baseR0_g2[g2] * EggsStanza / p$baseEggs_g2[g2]
     Y_zz[which_z[1],'WageS'] = 0
