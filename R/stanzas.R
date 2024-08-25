@@ -41,9 +41,6 @@ function( settings ){
                           "d" = d_g2,
                           "lead_s" = stanzainfo_s2z[which(stanzainfo_s2z[,'lead']==1),'s'] )
 
-  # Globals
-  vbm_g2 = (1 - 3 * K_g2 / settings$STEPS_PER_YEAR)
-
   # EASIER TO LOOP THROUGH STANZAS
   X_zz = NULL
   for( g2 in seq_len(n_g2) ){
@@ -89,7 +86,7 @@ function( p,
 
   n_s2 = stanza_data$n_s2
   n_g2 = stanza_data$n_g2
-  K_g2 = stanza_data$stanzainfo_g2z[,'K']
+  #K_g2 = stanza_data$stanzainfo_g2z[,'K']
   d_g2 = stanza_data$stanzainfo_g2z[,'d']
   Wmat_g2 = stanza_data$stanzainfo_g2z[,'Wmat']
   #SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
@@ -100,7 +97,7 @@ function( p,
   X_zz = stanza_data$X_zz
 
   # Globals
-  vbm_g2 = (1 - 3 * K_g2 / settings$STEPS_PER_YEAR)
+  vbm_g2 = (1 - 3 * p$K_g2 / settings$STEPS_PER_YEAR)
   pos = function(x){
     "c" <- ADoverload("c")
     "[<-" <- ADoverload("[<-")
@@ -128,7 +125,7 @@ function( p,
     t2_a = Xg2_zz[,'t2']
 
     # WageS and QageS
-    k = K_g2[g2] * 3
+    k = p$K_g2[g2] * 3
     d = d_g2[g2]
     WageS = (1 - exp(-k * (1 - d) * (AGE))) ^ (1 / (1 - d))
     QageS = WageS ^ d

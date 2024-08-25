@@ -46,9 +46,10 @@ function( p ) {
   # Objects to save
   TL_ti = dBdt0_ti = M_ti = m_ti = G_ti = g_ti = M2_ti = m2_ti = Bmean_ti = Chat_ti = B_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
   loglik1_ti = loglik2_ti = loglik3_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )  # Missing = 0
-  loglik4_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=length(settings$unique_stanza_groups) )
+  loglik4_tg2 = loglik5_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=length(settings$unique_stanza_groups) )
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   Nexp_ta_g2 = Nobs_ta_g2
+  Wexp_ta_g2 = Wobs_ta_g2
 
   # Initial condition
   B_ti[1,] = out_initial$B_i * exp(p$delta_i)
@@ -194,13 +195,13 @@ function( p ) {
     r = sum(s) - logD
     if(log){r}else{exp(r)}
   }
-  selex_index = 0
+  #selex_index = 0
   for( index in seq_along(Nobs_ta_g2) ){
     g2 = match( names(Nobs_ta_g2)[index], settings$unique_stanza_groups )
     which_z = which( stanza_data$X_zz[,'g2'] == g2 )
-    selex_index = max(selex_index) + seq_len( switch(settings$comp_weight,"multinom"=2,"dir"=3,"dirmult"=3) ) # CHANGE WITH NUMBER OF PARAMETERS
-    selex_pars = p$selex_z[selex_index]
-    selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - selex_pars[1])/selex_pars[2] )
+    #selex_index = max(selex_index) + seq_len( switch(settings$comp_weight,"multinom"=2,"dir"=3,"dirmult"=3) ) # CHANGE WITH NUMBER OF PARAMETERS
+    #selex_pars = p$selex_z[selex_index]
+    selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - p$s50_z[index])/p$srate_z[index] )
     for( index2 in seq_len(nrow(Nobs_ta_g2[[index]])) ){
       t = match( rownames(Nobs_ta_g2[[index]])[index2], years )
       Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
@@ -213,16 +214,41 @@ function( p ) {
       if( settings$comp_weight == "multinom" ){
         loglik4_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
       }else if( settings$comp_weight == "dir" ){
-        loglik4_tg2[t,g2] = ddirichlet( obs/sum((Nobs_ta_g2[[index]])[index2,]), alpha=prob * exp(selex_pars[3]), log=TRUE )
+        loglik4_tg2[t,g2] = ddirichlet( obs/sum((Nobs_ta_g2[[index]])[index2,]), alpha=prob * exp(p$compweight_z[index]), log=TRUE )
       }else{
-        #browser()
-        loglik4_tg2[t,g2] = ddirmult( obs, prob=prob, ln_theta=selex_pars[3], log=TRUE )
+        loglik4_tg2[t,g2] = ddirmult( obs, prob=prob, ln_theta=p$compweight_z[index], log=TRUE )
+      }
+    }
+  }
+
+  # Empirical weight-at-age
+  for( index in seq_along(Wobs_ta_g2) ){
+    g2 = match( names(Nobs_ta_g2)[index], settings$unique_stanza_groups )
+    which_z = which( stanza_data$X_zz[,'g2'] == g2 )
+    #weight_index = max(weight_index) + 1:2
+    for( index2 in seq_len(nrow(Nobs_ta_g2[[index]])) ){
+      t = match( rownames(Nobs_ta_g2[[index]])[index2], years )
+      Wexp_a = Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
+      for(z in which_z){
+        Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + Y_tzz[t,z,'NageS']
+      }
+      for(z in which_z){
+        prop = Y_tzz[t,z,'NageS'] / Nexp_a[stanza_data$X_zz[z,'age_class']+1]
+        Wexp_a[stanza_data$X_zz[z,'age_class']+1] = Wexp_a[stanza_data$X_zz[z,'age_class']+1] + prop * Y_tzz[t,z,'WageS']
+      }
+      Wexp_ta_g2[[index]][index2,] = Wexp_a[-1] * exp(p$winf_z[index])   # Remove age-0
+      obs = (Wobs_ta_g2[[index]])[index2,]
+      mu = (Wexp_ta_g2[[index]])[index2,]
+      for( index3 in seq_along(obs) ){
+        if( !is.na(obs[index3]) ){
+          loglik5_tg2[t,g2] = loglik5_tg2[t,g2] + dnorm(log(obs[index3]), mean=log(mu[index3]), sd=exp(p$ln_sdW_z[index]), log=TRUE)
+        }
       }
     }
   }
 
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
-  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_tg2) )
+  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_tg2) + sum(loglik5_tg2) )
   
   # Reporting
   REPORT( B_ti )
@@ -245,11 +271,13 @@ function( p ) {
   REPORT( loglik2_ti )
   REPORT( loglik3_ti )
   REPORT( loglik4_tg2 )
+  REPORT( loglik5_tg2 )
   REPORT( jnll )
   REPORT( TL_ti )
   REPORT( Y_tzz )
   REPORT( stanza_data )
   REPORT( Nexp_ta_g2 )
+  REPORT( Wexp_ta_g2 )
 
   if( sdreport_detail >= 1 ){
     ADREPORT( B_ti )

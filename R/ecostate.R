@@ -57,6 +57,7 @@ function( taxa,
           catch = data.frame("Year"=numeric(0),"Mass"=numeric(0),"Taxon"=numeric(0)),
           biomass = data.frame("Year"=numeric(0),"Mass"=numeric(0),"Taxon"=numeric(0)),
           agecomp = list(),
+          weight = list(),
           PB,
           QB,
           B,
@@ -175,10 +176,15 @@ function( taxa,
   # ADD MORE CHECKS
 
   #
+  assertList( weight )
+  Wobs_ta_g2 = weight[match(names(weight),settings$unique_stanza_groups)]  # match works for empty list
+
+  #
   stanza_data = make_stanza_data( settings )
 
   # number of selex params
-  n_selex = length(Nobs_ta_g2) * switch( settings$comp_weight, "multinom" = 2, "dir" = 3, "dirmult" = 3 )
+  n_selex = length(Nobs_ta_g2) # * switch( settings$comp_weight, "multinom" = 2, "dir" = 3, "dirmult" = 3 )
+  n_weight = length(Wobs_ta_g2)
 
   # parameter list
   #browser()
@@ -197,8 +203,14 @@ function( taxa,
             alpha_ti = array( 0, dim=c(0,n_species) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
             logq_i = rep( log(1), n_species),
-            selex_z = rep(1, n_selex),  # CHANGE WITH NUMBER OF PARAMETERS
-            SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
+            s50_z = rep(1, n_selex),
+            srate_z = rep(1, n_selex),
+            compweight_z = rep(1, n_selex*ifelse(settings$comp_weight=="multinom",0,1)),
+            #selex_z = rep(1, n_selex),  # CHANGE WITH NUMBER OF PARAMETERS
+            winf_z = rep(0, n_weight),
+            ln_sdW_z = rep(0, n_weight),
+            SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX'],
+            K_g2 = stanza_data$stanzainfo_g2z[,'K']
   )      # , PB_i=PB_i
 
   # 
@@ -211,6 +223,7 @@ function( taxa,
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
   map$Xprime_ij = factor( array(NA,dim=dim(p$Xprime_ij)) )
   map$SpawnX_g2 = factor( rep(NA,length(p$SpawnX_g2)) )
+  map$K_g2 = factor( rep(NA,length(p$K_g2)) )
 
   # 
   #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
@@ -283,6 +296,7 @@ function( taxa,
                   Bobs_ti = Bobs_ti
                   Cobs_ti = Cobs_ti
                   Nobs_ta_g2 = Nobs_ta_g2
+                  Wobs_ta_g2 = Wobs_ta_g2
                   years = years
                   #DC_ij = DC_ij
                   n_steps = control$n_steps 
@@ -388,6 +402,7 @@ function( taxa,
     Bobs_ti = Bobs_ti,
     Cobs_ti = Cobs_ti,
     Nobs_ta_g2 = Nobs_ta_g2,
+    Wobs_ta_g2 = Wobs_ta_g2,
     # Avoid stuff that's in parhat
     #logPB_i = logPB_i, 
     #logQB_i = logQB_i, 
@@ -475,7 +490,7 @@ function( nlminb_loops = 1,
           silent = getOption("ecostate.silent", TRUE),
           trace = getOption("ecostate.trace", 0),
           verbose = getOption("ecostate.verbose", FALSE),
-          profile = c("logF_ti"),
+          profile = c("logF_ti","winf_z","s50_z","srate_z"),
           random = c("epsilon_ti","alpha_ti"),
           tmb_par = NULL,
           map = NULL,
