@@ -71,6 +71,7 @@ function( taxa,
           fit_B0 = vector(),
           fit_EE = vector(),
           fit_eps = vector(),
+          fit_nu = vector(),
           settings = stanza_settings(taxa=taxa),
           control = ecostate_control() ){
 
@@ -199,15 +200,17 @@ function( taxa,
             Xprime_ij = Xprime_ij,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
+            logsigma_i = rep(NA, n_species),
             epsilon_ti = array( 0, dim=c(0,n_species) ),
             alpha_ti = array( 0, dim=c(0,n_species) ),
+            nu_ti = array( 0, dim=c(0,n_species) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
             logq_i = rep( log(1), n_species),
             s50_z = rep(1, n_selex),
             srate_z = rep(1, n_selex),
             compweight_z = rep(1, n_selex*ifelse(settings$comp_weight=="multinom",0,1)),
             #selex_z = rep(1, n_selex),  # CHANGE WITH NUMBER OF PARAMETERS
-            winf_z = rep(0, n_weight),
+            log_winf_z = rep(0, n_weight),
             ln_sdW_z = rep(0, n_weight),
             SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX'],
             K_g2 = stanza_data$stanzainfo_g2z[,'K']
@@ -230,6 +233,11 @@ function( taxa,
   p$logtau_i = ifelse(taxa %in% fit_eps, log(control$start_tau), NA)
   map$logtau_i = factor(ifelse(taxa %in% fit_eps, seq_len(n_species), NA))
   
+  #
+  #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
+  p$logsigma_i = ifelse(taxa %in% fit_nu, log(control$start_tau), NA)
+  map$logsigma_i = factor(ifelse(taxa %in% fit_nu, seq_len(n_species), NA))
+
   # Catches
   map$logF_ti = factor( ifelse(is.na(Cobs_ti), NA, seq_len(prod(dim(Cobs_ti)))) )
   p$logF_ti[] = ifelse(is.na(Cobs_ti), -Inf, log(0.01))
@@ -262,7 +270,16 @@ function( taxa,
     }
     map$alpha_ti = factor(map$alpha_ti)
   }
-  
+  p$nu_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) )
+  map$nu_ti = array( seq_len(prod(dim(p$nu_ti))), dim=dim(p$nu_ti))
+  for(i in 1:n_species){
+    if( is.na(p$logsigma_i[i]) ){
+      p$nu_ti[,i] = 0
+      map$nu_ti[,i] = NA
+    }
+  }
+  map$nu_ti = factor(map$nu_ti)
+
   # Measurement errors
   p$ln_sdB = log(0.1)
   map$ln_sdB = factor(NA)
@@ -490,8 +507,8 @@ function( nlminb_loops = 1,
           silent = getOption("ecostate.silent", TRUE),
           trace = getOption("ecostate.trace", 0),
           verbose = getOption("ecostate.verbose", FALSE),
-          profile = c("logF_ti","winf_z","s50_z","srate_z"),
-          random = c("epsilon_ti","alpha_ti"),
+          profile = c("logF_ti","log_winf_z","s50_z","srate_z"),
+          random = c("epsilon_ti","alpha_ti","nu_ti"),
           tmb_par = NULL,
           map = NULL,
           getJointPrecision = FALSE,

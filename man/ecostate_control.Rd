@@ -13,8 +13,8 @@ ecostate_control(
   silent = getOption("ecostate.silent", TRUE),
   trace = getOption("ecostate.trace", 0),
   verbose = getOption("ecostate.verbose", FALSE),
-  profile = c("logF_ti"),
-  random = c("epsilon_ti", "alpha_ti"),
+  profile = c("logF_ti", "log_winf_z", "s50_z", "srate_z"),
+  random = c("epsilon_ti", "alpha_ti", "nu_ti"),
   tmb_par = NULL,
   map = NULL,
   getJointPrecision = FALSE,
@@ -22,9 +22,11 @@ ecostate_control(
   process_error = c("epsilon", "alpha"),
   n_steps = 10,
   F_type = c("integrated", "averaged"),
+  sdreport_detail = 1,
   scale_solver = c("joint", "simple"),
   inverse_method = c("Standard", "Penrose_moore"),
   tmbad.sparse_hessian_compress = 1,
+  use_gradient = TRUE,
   start_tau = 0.001
 )
 }
@@ -77,6 +79,9 @@ efficient.}
 \item{F_type}{whether to integrate catches along with biomass (\code{"integrated"})
 or calculate catches from the Baranov catch equation applied to average
 biomass (\code{"averaged"})}
+
+\item{sdreport_detail}{increasing value increases the set of derived quantities
+that are included when calculating standard errors}
 
 \item{tmbad.sparse_hessian_compress}{passed to \code{\link[TMB:config]{TMB::config()}}, and enabling
 an experimental feature to save memory when first computing the inner

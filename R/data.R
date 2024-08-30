@@ -43,4 +43,16 @@
 #' @keywords data
 NULL
 
+#' @title
+#' Full rpath inputs for eastern Bering Sea
+#'
+#' @description
+#' All Rpath inputs from Whitehouse et al. 2021
+#'
+#'
+#' @name whitehouse_2021
+#' @docType data
+#' @usage data(whitehouse_2021)
+#' @keywords data
+NULL
 

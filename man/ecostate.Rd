@@ -7,8 +7,10 @@
 ecostate(
   taxa,
   years,
-  catch,
-  biomass,
+  catch = data.frame(Year = numeric(0), Mass = numeric(0), Taxon = numeric(0)),
+  biomass = data.frame(Year = numeric(0), Mass = numeric(0), Taxon = numeric(0)),
+  agecomp = list(),
+  weight = list(),
   PB,
   QB,
   B,
@@ -22,6 +24,7 @@ ecostate(
   fit_B0 = vector(),
   fit_EE = vector(),
   fit_eps = vector(),
+  fit_nu = vector(),
   settings = stanza_settings(taxa = taxa),
   control = ecostate_control()
 )

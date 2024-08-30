@@ -1,10 +1,10 @@
 ---
-title: "Eastern Bering Sea case study"
+title: "Model of Intermediate Complexity"
 author: "James Thorson"
 output: rmarkdown::html_vignette
 #output: rmarkdown::pdf_document
 vignette: >
-  %\VignetteIndexEntry{Eastern Bering Sea case study}
+  %\VignetteIndexEntry{Model of Intermediate Complexity}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,15 +19,14 @@ knitr::opts_chunk$set(
 #  devtools::install_github( 'James-Thorson-NOAA/ecostate', force=TRUE )
 # Build
 # setwd(R'(C:\Users\James.Thorson\Desktop\Git\ecostate)'); 
-# file.copy( from="vignettes/web_only/eastern_bering_sea.Rmd.orig", to="vignettes/web_only/eastern_bering_sea.Rmd", overwrite=TRUE )
-# devtools::build_rmd("vignettes/web_only/eastern_bering_sea.Rmd"); rmarkdown::render( "vignettes/web_only/eastern_bering_sea.Rmd", rmarkdown::pdf_document())
+# devtools::build_rmd("vignettes/web_only/model_of_intermediate_complexity.Rmd"); rmarkdown::render( "vignettes/web_only/model_of_intermediate_complexity.Rmd", rmarkdown::pdf_document())
 ```
 
 ```{r setup, echo=TRUE, message=FALSE}
 library(EcoState)
 ```
 
-`ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   We here demonstrate how it can be fitted to a real-world data set including 10 functional groups and 1 detritus pool, using data across four trophic levels and representing both pelagic and demersal energy pathways.
+`ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   We here demonstrate how it can be fitted to a real-world data set as a "Model of Intermediate Complexity" while including 10 functional groups and 1 detritus pool, using data across four trophic levels and representing both pelagic and demersal energy pathways.
 
 ## Eastern Bering Sea 
 

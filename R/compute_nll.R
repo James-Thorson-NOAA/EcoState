@@ -35,18 +35,20 @@ function( p ) {
   }
   
   # unfished M0 and M2, and B_i solved for EE_i
+  #browser()
   p_t = p
     p_t$epsilon_i = rep(0,n_species)
     p_t$logF_i = rep(-Inf,n_species)
-  out_initial = dBdt( Time = 1, 
+    p_t$nu_i = rep(0,n_species)
+  out_initial = dBdt( Time = 1,
               State = c(p$logB_i,rep(0,n_species)), 
               Pars = p_t,
               what = "stuff" )
   
   # Objects to save
   TL_ti = dBdt0_ti = M_ti = m_ti = G_ti = g_ti = M2_ti = m2_ti = Bmean_ti = Chat_ti = B_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
-  loglik1_ti = loglik2_ti = loglik3_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )  # Missing = 0
-  loglik4_tg2 = loglik5_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=length(settings$unique_stanza_groups) )
+  loglik1_ti = loglik2_ti = loglik3_ti = loglik4_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )  # Missing = 0
+  loglik5_tg2 = loglik6_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=length(settings$unique_stanza_groups) )
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   Nexp_ta_g2 = Nobs_ta_g2
   Wexp_ta_g2 = Wobs_ta_g2
@@ -77,6 +79,7 @@ function( p ) {
     }else{
       p_t$epsilon_i = rep(0,n_species)
     }
+    p_t$nu_i = p$nu_ti[t,]
 
     # RTMBode::ode requires y0 have names
     y0 = c(B_ti[t-1,], rep(0,n_species))
@@ -180,6 +183,9 @@ function( p ) {
     if( !is.na(Cobs_ti[t,i]) ){
       loglik3_ti[t,i] = dnorm( log(Cobs_ti[t,i]), log(Chat_ti[t,i]), exp(p$ln_sdC), log=TRUE)
     }
+    if( !is.na(p$logsigma_i[i]) ){
+      loglik4_ti[t,i] = dnorm( p$nu_ti[t,i], 0, exp(p$logsigma_i[i]), log=TRUE)
+    }
   }}
   #if(isFALSE(inherits(Bexp_ti,"advector"))) stop("Bexp_ti")
 
@@ -212,11 +218,11 @@ function( p ) {
       obs = (Nobs_ta_g2[[index]])[index2,]
       prob = Nexp_ta_g2[[index]][index2,]
       if( settings$comp_weight == "multinom" ){
-        loglik4_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
+        loglik5_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
       }else if( settings$comp_weight == "dir" ){
-        loglik4_tg2[t,g2] = ddirichlet( obs/sum((Nobs_ta_g2[[index]])[index2,]), alpha=prob * exp(p$compweight_z[index]), log=TRUE )
+        loglik5_tg2[t,g2] = ddirichlet( obs/sum((Nobs_ta_g2[[index]])[index2,]), alpha=prob * exp(p$compweight_z[index]), log=TRUE )
       }else{
-        loglik4_tg2[t,g2] = ddirmult( obs, prob=prob, ln_theta=p$compweight_z[index], log=TRUE )
+        loglik5_tg2[t,g2] = ddirmult( obs, prob=prob, ln_theta=p$compweight_z[index], log=TRUE )
       }
     }
   }
@@ -236,19 +242,19 @@ function( p ) {
         prop = Y_tzz[t,z,'NageS'] / Nexp_a[stanza_data$X_zz[z,'age_class']+1]
         Wexp_a[stanza_data$X_zz[z,'age_class']+1] = Wexp_a[stanza_data$X_zz[z,'age_class']+1] + prop * Y_tzz[t,z,'WageS']
       }
-      Wexp_ta_g2[[index]][index2,] = Wexp_a[-1] * exp(p$winf_z[index])   # Remove age-0
+      Wexp_ta_g2[[index]][index2,] = Wexp_a[-1] * exp(p$log_winf_z[index])   # Remove age-0
       obs = (Wobs_ta_g2[[index]])[index2,]
       mu = (Wexp_ta_g2[[index]])[index2,]
       for( index3 in seq_along(obs) ){
         if( !is.na(obs[index3]) ){
-          loglik5_tg2[t,g2] = loglik5_tg2[t,g2] + dnorm(log(obs[index3]), mean=log(mu[index3]), sd=exp(p$ln_sdW_z[index]), log=TRUE)
+          loglik6_tg2[t,g2] = loglik6_tg2[t,g2] + dnorm(log(obs[index3]), mean=log(mu[index3]), sd=exp(p$ln_sdW_z[index]), log=TRUE)
         }
       }
     }
   }
 
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
-  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_tg2) + sum(loglik5_tg2) )
+  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2) + sum(loglik6_tg2) )
   
   # Reporting
   REPORT( B_ti )
@@ -270,8 +276,8 @@ function( p ) {
   REPORT( loglik1_ti )
   REPORT( loglik2_ti )
   REPORT( loglik3_ti )
-  REPORT( loglik4_tg2 )
   REPORT( loglik5_tg2 )
+  REPORT( loglik6_tg2 )
   REPORT( jnll )
   REPORT( TL_ti )
   REPORT( Y_tzz )

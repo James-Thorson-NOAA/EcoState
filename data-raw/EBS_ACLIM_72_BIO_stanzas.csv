@@ -1,0 +1,13 @@
+StGroupNum,StanzaNum,GroupNum,Group,First,Last,Z,Leading
+1,1,7,N.fur.seal_Juv,1,35,0.2519075,FALSE
+1,2,8,N.fur.seal_Adu,36,400,0.091245,TRUE
+2,1,17,W.pollock_Juv,1,23,1.453282,FALSE
+2,2,18,W.pollock_Adu,24,400,0.6672099,TRUE
+3,1,19,P.cod_Juv,1,23,1.782069,FALSE
+3,2,20,P.cod_Adu,24,400,0.4118969,TRUE
+4,1,22,Arrowtooth_Juv,1,25,0.8101363,FALSE
+4,2,23,Arrowtooth_Adu,26,400,0.18,TRUE
+5,1,25,Gr.Turbot_Juv,1,23,1.700589,FALSE
+5,2,26,Gr.Turbot_Adu,24,400,0.18,TRUE
+6,1,27,P.halibut_Juv,1,23,2.399714,FALSE
+6,2,28,P.halibut_Adu,24,400,0.19,TRUE

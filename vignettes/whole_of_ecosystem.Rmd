@@ -1,0 +1,178 @@
+---
+title: "Whole of ecosystem model"
+author: "James Thorson"
+output: rmarkdown::html_vignette
+#output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{Whole of ecosystem model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+# Install locally
+#  devtools::install_local( R'(C:\Users\James.Thorson\Desktop\Git\ecostate)', force=TRUE )
+#  devtools::install_github( 'James-Thorson-NOAA/ecostate', force=TRUE )
+# Build
+# setwd(R'(C:\Users\James.Thorson\Desktop\Git\ecostate)'); 
+# devtools::build_rmd("vignettes/whole_of_ecosystem.Rmd"); rmarkdown::render( "vignettes/whole_of_ecosystem.Rmd", rmarkdown::pdf_document())
+```
+
+```{r setup, echo=TRUE, message=FALSE}
+library(EcoState)
+```
+
+`ecostate` is an R package for fitting the mass-balance dynamics specified by EcoSim as a state-space model.   We here demonstrate how it can be fitted to an entire ecosystem, using inputs from a previous Rpath model from Whitehouse et al. 2021, and fitting it to biomass and catch time-series for pollock, cod, and arrowtooth.
+
+## Eastern Bering Sea 
+
+We first load various inputs that are used by Rpath:
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+data( whitehouse_2021 )
+Ecopath = whitehouse_2021$Ecopath
+Diet = whitehouse_2021$Diet
+stanzas = whitehouse_2021$stanzas
+stanza_groups = whitehouse_2021$stanza_groups
+```
+
+We also load time-series of surveys and catches that are used in the MICE model demonstration:
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+data( eastern_bering_sea )
+Catch = eastern_bering_sea$Catch
+catch = data.frame( "Year"=Catch$Year, "Mass"=Catch$Mass, "Taxon"=Catch$Taxon )
+catch$Taxon = sapply( catch$Taxon, FUN=switch, "Arrowtooth" = "Arrowtooth flounder adult",
+                                               "Cod" = "Pacific cod adult",
+                                               "Pollock" = "Walleye pollock adult" )
+
+#
+Fish = eastern_bering_sea$Survey
+biomass = data.frame(
+  "Mass" = Fish$Mass,
+  "Year" = Fish$Year,
+  "Taxon" = sapply( Fish$Taxon, FUN=switch, "Arrowtooth" = "Arrowtooth flounder adult",
+                                              "Cod" = "Pacific cod adult",
+                                              "Pollock" = "Walleye pollock adult",
+                                              NA)
+)
+biomass = na.omit(biomass)
+```
+
+We then reformat the various Rpath inputs.  In particular, we eliminate the pelagic detritus pool (because EcoState currently does not allow more than one detritus functional group), and add `benthic_detritus` to the Ecopath inputs (because Ecopath solves for equilibrium values for detritus jointly with other groups):
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+#
+which_ecopath = setdiff(1:nrow(Ecopath), 66)
+taxa = c( Ecopath[which_ecopath,'Functional.group'], "benthic_detritus" )
+type = sapply( taxa, FUN=switch, "benthic_detritus"="detritus", "Large phytoplankton"="auto", "Small phytoplankton"="auto", "hetero" )
+PB = c( Ecopath[which_ecopath,'P.B'], 0.5 )
+QB = c( Ecopath[which_ecopath,'Q.B'], NA )
+B = c( Ecopath[which_ecopath,'Biomass'], NA )
+EE = c( Ecopath[which_ecopath,'EE'], 0.5 )
+U = c( rep(0.2,length(which_ecopath)), 0 )
+
+# Modify EE
+EE = ifelse( taxa %in% c("benthic_detritus","Walleye pollock adult"), EE, NA )
+
+# 
+which_cols = which_ecopath + 1
+which_rows = c( which_ecopath, 72 )
+DC = cbind( Diet[which_rows, which_cols], "benthic_detritus"=0 )
+DC = ifelse( is.na(DC), 0, as.matrix(DC) )
+X = array(2, dim=rep(length(taxa),2) )
+
+#
+stgroups = stanza_groups[,'StanzaGroup'][stanzas[,'StGroupNum']]
+Amax = ceiling((stanzas[,'Last']+1) / 12)
+
+#
+K = stanza_groups[,'VBGF_Ksp']
+d = stanza_groups[,'VBGF_d']
+Wmat = stanza_groups[,'Wmat']
+SpawnX = rep(2, length(K))
+
+# Add names
+names(PB) = names(QB) = names(B) = names(EE) = names(U) = names(type) = taxa
+dimnames(DC) = dimnames(X) = list( taxa, taxa )
+names(Amax) = names(stgroups) = taxa[stanzas[,'GroupNum']]
+names(K) = names(d) = names(Wmat) = names(SpawnX) = unique(stgroups)
+
+# Eliminate juvenile values
+which_juv = stanzas[which(!stanzas[,'Leading']),'GroupNum']
+QB[which_juv] = B[which_juv] = NA
+```
+
+We then specify which parameters to estimate:
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# Fit catchability coefficient for adult pollock
+fit_Q = c( "Walleye pollock adult" )
+
+# fit equilibrium biomass for adult arrowtooth and cod
+fit_B = c( "Arrowtooth flounder adult", "Pacific cod adult" )
+```
+
+Finally, we will build inputs without running the model, modify the TMB `map` manually, and then estimate parameters
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+run = function( map, nlminb_loops, getsd ){
+  out = ecostate(
+    taxa = taxa,
+    years = 1981:2020,
+    catch = catch,
+    biomass = biomass,
+    PB = PB,
+    QB = QB,
+    DC = DC,
+    B = B,
+    EE = EE,
+    X = X,
+    type = type,
+    U = U,
+    fit_B = fit_B,
+    fit_Q = fit_Q,
+    control = ecostate_control( nlminb_loops = nlminb_loops,
+                                getsd = getsd,
+                                n_steps = 30,
+                                profile = NULL,
+                                random = NULL,
+                                sdreport_detail = 0,
+                                map = map,
+                                start_tau = 0.1 ),
+    settings = stanza_settings(
+      taxa = taxa,
+      stanza_groups = stgroups,
+      K = K,
+      Wmat = Wmat,
+      d = d,
+      Amax = Amax,
+      SpawnX = SpawnX,
+      STEPS_PER_YEAR = 12 )
+  )
+}
+out0 = run( map = NULL,
+           nlminb_loops = 0,
+           getsd = FALSE )
+map = out0$tmb_inputs$map
+  map$logtau_i = factor(rep(NA,length(map$logtau_i)))
+out = run( map = map,
+           nlminb_loops = 1,
+           getsd = TRUE )
+```
+
+We can compare equilibrium biomass between packages, although these obviously differ because we are estimating equilibrium biomass for arrowtooth and cod:
+
+```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# Compile stuff
+Borig = c( Ecopath[which_ecopath,'Biomass'], NA )
+Bhat = print_ecopars(out, silent=TRUE)[[1]][,'B']
+df = data.frame( taxa, 
+                 "Whitehouse" = Borig, 
+                 "EcoState" = Bhat, 
+                 "Difference" = Bhat - Borig )
+knitr::kable( df, digits=3 )
+```
