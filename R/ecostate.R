@@ -336,6 +336,9 @@ function( taxa,
                   sdreport_detail = control$sdreport_detail
                   settings = settings
                   stanza_data = stanza_data
+                  taxa = taxa
+                  fit_eps = fit_eps
+                  fit_nu = fit_nu
                   environment()
   })
   environment(compute_nll) <- data

@@ -177,13 +177,13 @@ function( p ) {
     if( !is.na(Bobs_ti[t,i]) ){
       loglik1_ti[t,i] = dnorm( log(Bobs_ti[t,i]), log(Bexp_ti[t,i]), exp(p$ln_sdB), log=TRUE)
     }
-    if( !is.na(p$logtau_i[i]) ){
+    if( (taxa %in% fit_eps)[i] ){
       loglik2_ti[t,i] = dnorm( epsilon_ti[t,i], 0, exp(p$logtau_i[i]), log=TRUE)
     }
     if( !is.na(Cobs_ti[t,i]) ){
       loglik3_ti[t,i] = dnorm( log(Cobs_ti[t,i]), log(Chat_ti[t,i]), exp(p$ln_sdC), log=TRUE)
     }
-    if( !is.na(p$logsigma_i[i]) ){
+    if( (taxa %in% fit_nu)[i] ){
       loglik4_ti[t,i] = dnorm( p$nu_ti[t,i], 0, exp(p$logsigma_i[i]), log=TRUE)
     }
   }}
@@ -214,9 +214,9 @@ function( p ) {
       for(z in which_z){
         Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + selex_a[z]*Y_tzz[t,z,'NageS']
       }
-      Nexp_ta_g2[[index]][index2,] = Nexp_a[-1] / sum(Nexp_a[-1],na.rm=TRUE)  # Remove age-0
+      Nexp_ta_g2[[index]][index2,] = Nexp_a[-1]  # Remove age-0
       obs = (Nobs_ta_g2[[index]])[index2,]
-      prob = Nexp_ta_g2[[index]][index2,]
+      prob = Nexp_ta_g2[[index]][index2,] / sum(Nexp_ta_g2[[index]][index2,],na.rm=TRUE)
       if( settings$comp_weight == "multinom" ){
         loglik5_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
       }else if( settings$comp_weight == "dir" ){
@@ -256,6 +256,10 @@ function( p ) {
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
   jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2) + sum(loglik6_tg2) )
   
+  # Derived
+  N_at = apply( Y_tzz, MARGIN=1,
+                FUN=\(M) tapply(M[,'NageS'],INDEX=stanza_data$X_zz[,'age_class'],FUN=mean) )
+
   # Reporting
   REPORT( B_ti )
   if(process_error=="alpha") REPORT( Bhat_ti )
@@ -266,6 +270,7 @@ function( p ) {
   REPORT( G_ti )
   REPORT( g_ti )
   REPORT( M_ti )
+  REPORT( N_at )
   REPORT( m_ti )
   REPORT( M2_ti )
   REPORT( m2_ti )
@@ -276,6 +281,7 @@ function( p ) {
   REPORT( loglik1_ti )
   REPORT( loglik2_ti )
   REPORT( loglik3_ti )
+  REPORT( loglik4_ti )
   REPORT( loglik5_tg2 )
   REPORT( loglik6_tg2 )
   REPORT( jnll )
