@@ -10,7 +10,7 @@ EcoState can be installed from GitHub using:
 
 ``` r
 library(remotes)
-install_github( "James-Thorson-NOAA/EcoState" )
+install_github( "James-Thorson-NOAA/EcoState", build_vignettes = TRUE )
 ```
 
 # More details 
