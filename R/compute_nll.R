@@ -24,22 +24,26 @@ function( p ) {
 
   # Compute equilibrium values
   p = add_equilibrium( p,
-                       scale_solver = scale_solver,
+                       scale_solver = control$scale_solver,
                        noB_i = noB_i,
                        type_i = type_i )
   
   # Extract epsilon_ti (local copy be modified later)
   epsilon_ti = p$epsilon_ti
-  if(process_error=="alpha"){
+  if(control$process_error=="alpha"){
     epsilon_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )
   }
   
+  #
+  F_type = control$F_type
+
   # unfished M0 and M2, and B_i solved for EE_i
   #browser()
   p_t = p
     p_t$epsilon_i = rep(0,n_species)
     p_t$logF_i = rep(-Inf,n_species)
     p_t$nu_i = rep(0,n_species)
+    p_t$phi_g2 = rep(0,settings$n_g2)
   out_initial = dBdt( Time = 1,
               State = c(p$logB_i,rep(0,n_species)), 
               Pars = p_t,
@@ -48,7 +52,7 @@ function( p ) {
   # Objects to save
   TL_ti = dBdt0_ti = M_ti = m_ti = G_ti = g_ti = M2_ti = m2_ti = Bmean_ti = Chat_ti = B_ti = Bhat_ti = matrix( NA, ncol=n_species, nrow=nrow(Bobs_ti) )
   loglik1_ti = loglik2_ti = loglik3_ti = loglik4_ti = matrix( 0, ncol=n_species, nrow=nrow(Bobs_ti) )  # Missing = 0
-  loglik5_tg2 = loglik6_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=length(settings$unique_stanza_groups) )
+  loglik5_tg2 = loglik6_tg2 = loglik7_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=length(settings$unique_stanza_groups) )
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   Nexp_ta_g2 = Nobs_ta_g2
   Wexp_ta_g2 = Wobs_ta_g2
@@ -56,7 +60,7 @@ function( p ) {
   # Initial condition
   B_ti[1,] = out_initial$B_i * exp(p$delta_i)
   jnll = 0
-  if( process_error == "alpha" ){
+  if( control$process_error == "alpha" ){
     epsilon_ti[1,] = p$alpha_ti[1,] 
   }
   Y_zz = p$Y_zz
@@ -68,18 +72,20 @@ function( p ) {
 
   # Loop through years
   for( t in 2:nrow(B_ti) ){
+  #for( t in 2:66 ){
     # Assemble inputs
     p_t = p
     p_t$Y_zz = Y_zz
     p_t$logF_i = p$logF_ti[t,]
 
     # State-space or continuous innovations
-    if( process_error == "epsilon" ){
+    if( control$process_error == "epsilon" ){
       p_t$epsilon_i = epsilon_ti[t,]
     }else{
       p_t$epsilon_i = rep(0,n_species)
     }
     p_t$nu_i = p$nu_ti[t,]
+    p_t$phi_g2 = p$phi_tg2[t,]
 
     # RTMBode::ode requires y0 have names
     y0 = c(B_ti[t-1,], rep(0,n_species))
@@ -91,26 +97,30 @@ function( p ) {
           f = dBdt,
           a = 0, 
           b = 1,
-          n = n_steps,
+          n = control$n_steps,
           Pars = p_t,
           y0 = y0 )
-
-    # Projec stanzas
-    proj_stanzas = project_stanzas(
-                 p = p_t,
-                 stanza_data = stanza_data,
-                 y = proj$y,
-                 STEPS_PER_YEAR = settings$STEPS_PER_YEAR,
-                 record_steps = FALSE,
-                 correct_errors = TRUE )
-    Y_zz = proj_stanzas$Y_zz
-    Y_tzz[t,,] = Y_zz
-
-    #
-    Bnew_s2 = get_stanza_total( stanza_data = stanza_data,
-                                Y_zz = p_t$Y_zz )
     Bnew_i = proj$y[nrow(proj$y),seq_len(n_species)]
-    Bnew_i[p_t$stanzainfo_s2z[,'s']] = Bnew_s2
+
+    if( settings$n_g2 > 0 ){
+      # Project stanzas
+      proj_stanzas = project_stanzas(
+                   p = p_t,
+                   stanza_data = stanza_data,
+                   y = proj$y,
+                   STEPS_PER_YEAR = settings$STEPS_PER_YEAR,
+                   record_steps = FALSE,
+                   correct_errors = settings$correct_errors ) # Have used TRUE
+      Y_zz = proj_stanzas$Y_zz
+      Y_tzz[t,,] = Y_zz
+
+      #
+      Bnew_s2 = get_stanza_total( stanza_data = stanza_data,
+                                  #Y_zz = p_t$Y_zz )    OLD VERSION SEEMS WRONG
+                                  Y_zz = Y_zz )
+      #Bnew_i[p_t$stanzainfo_s2z[,'s']] = Bnew_s2
+      Bnew_i[stanza_data$stanzainfo_s2z[,'s']] = Bnew_s2
+    }
 
     # Average biomass
     for( i in seq_len(n_species) ){
@@ -118,7 +128,7 @@ function( p ) {
     }
 
     # Record variables
-    if( process_error == "epsilon" ){
+    if( control$process_error == "epsilon" ){
       B_ti[t,] = Bnew_i
     }else{
       Bhat_ti[t,] = Bnew_i
@@ -134,13 +144,13 @@ function( p ) {
     }
 
     # Record other variables
-    if( F_type=="integrated" ){
+    if( control$F_type=="integrated" ){
       Chat_ti[t,] = proj$y[nrow(proj$y),n_species+seq_len(n_species)]
     }else{
       Chat_ti[t,] = Bmean_ti[t,] * (1 - exp( -1 * exp(p$logF_ti[t,]) ))
     }
-    DC_ij = as.matrix(DC_ij)
-    M2_ti[t,] = (DC_ij %*% (Bmean_ti[t,] * exp(logQB_i))) / Bmean_ti[t,]
+    DC_ij = as.matrix(p$DC_ij)
+    M2_ti[t,] = (DC_ij %*% (Bmean_ti[t,] * exp(p$logQB_i))) / Bmean_ti[t,]
 
     # Record more using midpoint biomass Bmean_ti
     out = dBdt( Time = 0, 
@@ -161,7 +171,7 @@ function( p ) {
     dBdt0_ti[t,] = out$dBdt0_i
     # Compute trophic level
     TL_ti[t,] = compute_tracer( Q_ij = tmp,
-                                inverse_method = inverse_method,
+                                inverse_method = control$inverse_method,
                                 type_i = type_i,
                                 tracer_i = rep(1,n_species) )
   }
@@ -205,22 +215,28 @@ function( p ) {
   for( index in seq_along(Nobs_ta_g2) ){
     g2 = match( names(Nobs_ta_g2)[index], settings$unique_stanza_groups )
     which_z = which( stanza_data$X_zz[,'g2'] == g2 )
-    #selex_index = max(selex_index) + seq_len( switch(settings$comp_weight,"multinom"=2,"dir"=3,"dirmult"=3) ) # CHANGE WITH NUMBER OF PARAMETERS
-    #selex_pars = p$selex_z[selex_index]
-    selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - p$s50_z[index])/p$srate_z[index] )
+    #selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - p$s50_z[index])/p$srate_z[index] )
+    which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
+    selex_a = plogis( (stanza_data$X_zz[which_z[which_a],'AGE'] - p$s50_z[index])/p$srate_z[index] )
     for( index2 in seq_len(nrow(Nobs_ta_g2[[index]])) ){
       t = match( rownames(Nobs_ta_g2[[index]])[index2], years )
-      Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
-      for(z in which_z){
-        Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + selex_a[z]*Y_tzz[t,z,'NageS']
-      }
+      # Comps are average-year abundance (smears cohorts across adjacent years)
+      #Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
+      #for(z in which_z){
+      #  Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + selex_a[z]*Y_tzz[t,z,'NageS']
+      #}
+      # Comps are end-of-year abundance
+      which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
+      Nexp_a = selex_a * Y_tzz[t,which_z[which_a],'NageS']
       Nexp_ta_g2[[index]][index2,] = Nexp_a[-1]  # Remove age-0
-      obs = (Nobs_ta_g2[[index]])[index2,]
-      prob = Nexp_ta_g2[[index]][index2,] / sum(Nexp_ta_g2[[index]][index2,],na.rm=TRUE)
+      # Remove any NAs
+      which_obs = which(!is.na((Nobs_ta_g2[[index]])[index2,]))
+      obs = (Nobs_ta_g2[[index]])[index2,which_obs]
+      prob = Nexp_ta_g2[[index]][index2,which_obs] / sum(Nexp_ta_g2[[index]][index2,which_obs],na.rm=TRUE)
       if( settings$comp_weight == "multinom" ){
         loglik5_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
       }else if( settings$comp_weight == "dir" ){
-        loglik5_tg2[t,g2] = ddirichlet( obs/sum((Nobs_ta_g2[[index]])[index2,]), alpha=prob * exp(p$compweight_z[index]), log=TRUE )
+        loglik5_tg2[t,g2] = ddirichlet( obs/sum(obs), alpha=prob*exp(p$compweight_z[index]), log=TRUE )
       }else{
         loglik5_tg2[t,g2] = ddirmult( obs, prob=prob, ln_theta=p$compweight_z[index], log=TRUE )
       }
@@ -253,16 +269,23 @@ function( p ) {
     }
   }
 
+  for( g2 in seq_len(settings$n_g2) ){
+  for( t in seq_len(nrow(Bexp_ti)) ){
+    if( (settings$unique_stanza_groups %in% fit_phi)[g2] ){
+      loglik7_tg2[t,g2] = dnorm( p$phi_tg2[t,g2], 0, exp(p$logpsi_g2[g2]), log=TRUE)
+    }
+  }}
+
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
-  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2) + sum(loglik6_tg2) )
+  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2) + sum(loglik6_tg2) + sum(loglik7_tg2) )
   
   # Derived
-  N_at = apply( Y_tzz, MARGIN=1,
-                FUN=\(M) tapply(M[,'NageS'],INDEX=stanza_data$X_zz[,'age_class'],FUN=mean) )
+  #N_at = apply( Y_tzz, MARGIN=1,
+  #              FUN=\(M) tapply(M[,'NageS'],INDEX=stanza_data$X_zz[,'age_class'],FUN=mean) )
 
   # Reporting
   REPORT( B_ti )
-  if(process_error=="alpha") REPORT( Bhat_ti )
+  if(control$process_error=="alpha") REPORT( Bhat_ti )
   REPORT( Chat_ti )
   REPORT( Bmean_ti )
   REPORT( out_initial )
@@ -270,7 +293,7 @@ function( p ) {
   REPORT( G_ti )
   REPORT( g_ti )
   REPORT( M_ti )
-  REPORT( N_at )
+  #REPORT( N_at )
   REPORT( m_ti )
   REPORT( M2_ti )
   REPORT( m2_ti )
@@ -284,6 +307,7 @@ function( p ) {
   REPORT( loglik4_ti )
   REPORT( loglik5_tg2 )
   REPORT( loglik6_tg2 )
+  REPORT( loglik7_tg2 )
   REPORT( jnll )
   REPORT( TL_ti )
   REPORT( Y_tzz )
@@ -291,10 +315,17 @@ function( p ) {
   REPORT( Nexp_ta_g2 )
   REPORT( Wexp_ta_g2 )
 
-  if( sdreport_detail >= 1 ){
+  if( settings$n_g2 >0 ){
+    baseR0_g2 = p$baseR0_g2
+    baseSB_g2 = p$baseSB_g2
+    REPORT( baseR0_g2 )
+    REPORT( baseSB_g2 )
+  }
+
+  if( control$sdreport_detail >= 1 ){
     ADREPORT( B_ti )
   }
-  if( sdreport_detail >= 2 ){
+  if( control$sdreport_detail >= 2 ){
     ADREPORT( Chat_ti )
     ADREPORT( Bexp_ti )
     ADREPORT( G_ti )

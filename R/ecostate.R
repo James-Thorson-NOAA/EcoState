@@ -72,6 +72,7 @@ function( taxa,
           fit_EE = vector(),
           fit_eps = vector(),
           fit_nu = vector(),
+          fit_phi = vector(),
           settings = stanza_settings(taxa=taxa),
           control = ecostate_control() ){
 
@@ -201,9 +202,11 @@ function( taxa,
             DC_ij = DC_ij,
             logtau_i = rep(NA, n_species),
             logsigma_i = rep(NA, n_species),
+            logpsi_g2 = rep(NA, settings$n_g2),
             epsilon_ti = array( 0, dim=c(0,n_species) ),
             alpha_ti = array( 0, dim=c(0,n_species) ),
             nu_ti = array( 0, dim=c(0,n_species) ),
+            phi_tg2 = array( 0, dim=c(0,settings$n_g2) ),
             logF_ti = array( log(0.01), dim=c(nrow(Bobs_ti),n_species) ),
             logq_i = rep( log(1), n_species),
             s50_z = rep(1, n_selex),
@@ -229,14 +232,16 @@ function( taxa,
   map$K_g2 = factor( rep(NA,length(p$K_g2)) )
 
   # 
-  #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
   p$logtau_i = ifelse(taxa %in% fit_eps, log(control$start_tau), NA)
   map$logtau_i = factor(ifelse(taxa %in% fit_eps, seq_len(n_species), NA))
   
   #
-  #p$logtau_i = ifelse(taxa %in% fit_eps, log(0.01)+logB_i, NA)
   p$logsigma_i = ifelse(taxa %in% fit_nu, log(control$start_tau), NA)
   map$logsigma_i = factor(ifelse(taxa %in% fit_nu, seq_len(n_species), NA))
+
+  #
+  p$logpsi_g2 = ifelse(settings$unique_stanza_groups %in% fit_phi, log(control$start_tau), NA)
+  map$logpsi_g2 = factor(ifelse(settings$unique_stanza_groups %in% fit_phi, seq_len(settings$n_g2), NA))
 
   # Catches
   map$logF_ti = factor( ifelse(is.na(Cobs_ti), NA, seq_len(prod(dim(Cobs_ti)))) )
@@ -252,7 +257,7 @@ function( taxa,
   if( control$process_error == "epsilon" ){
     p$epsilon_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) )
     map$epsilon_ti = array( seq_len(prod(dim(p$epsilon_ti))), dim=dim(p$epsilon_ti))
-    for(i in 1:n_species){
+    for(i in seq_len(n_species)){
       if( is.na(p$logtau_i[i]) ){
         p$epsilon_ti[,i] = 0
         map$epsilon_ti[,i] = NA
@@ -262,7 +267,7 @@ function( taxa,
   }else{
     p$alpha_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) )
     map$alpha_ti = array( seq_len(prod(dim(p$alpha_ti))), dim=dim(p$alpha_ti))
-    for(i in 1:n_species){
+    for(i in seq_len(n_species)){
       if( is.na(p$logtau_i[i]) ){
         p$alpha_ti[,i] = 0
         map$alpha_ti[,i] = NA
@@ -270,15 +275,26 @@ function( taxa,
     }
     map$alpha_ti = factor(map$alpha_ti)
   }
+  # Variation in consumption
   p$nu_ti = array( 0, dim=c(nrow(Bobs_ti),n_species) )
   map$nu_ti = array( seq_len(prod(dim(p$nu_ti))), dim=dim(p$nu_ti))
-  for(i in 1:n_species){
+  for(i in seq_len(n_species)){
     if( is.na(p$logsigma_i[i]) ){
       p$nu_ti[,i] = 0
       map$nu_ti[,i] = NA
     }
   }
   map$nu_ti = factor(map$nu_ti)
+  # Variation in recruitment
+  p$phi_tg2 = array( 0, dim=c(nrow(Bobs_ti),settings$n_g2) )
+  map$phi_tg2 = array( seq_len(prod(dim(p$phi_tg2))), dim=dim(p$phi_tg2))
+  for(g2 in seq_len(settings$n_g2)){
+    if( is.na(p$logpsi_g2[g2]) ){
+      p$phi_tg2[,g2] = 0
+      map$phi_tg2[,g2] = NA
+    }
+  }
+  map$phi_tg2 = factor(map$phi_tg2)
 
   # Measurement errors
   p$ln_sdB = log(0.1)
@@ -316,7 +332,8 @@ function( taxa,
                   Wobs_ta_g2 = Wobs_ta_g2
                   years = years
                   #DC_ij = DC_ij
-                  n_steps = control$n_steps 
+                  control = control
+                  #n_steps = control$n_steps
                   if( control$integration_method == "ABM"){
                     project_vars = abm3pc_sys 
                   }else if( control$integration_method =="RK4"){
@@ -326,14 +343,14 @@ function( taxa,
                       myode( f, a, b, y0, n, Pars, method=control$integration_method )
                     }
                   }
-                  F_type = control$F_type
+                  #F_type = control$F_type
                   n_species = n_species
                   noB_i = noB_i
-                  scale_solver = control$scale_solver
-                  inverse_method = control$inverse_method
+                  #scale_solver = control$scale_solver
+                  #inverse_method = control$inverse_method
                   type_i = type_i
-                  process_error = control$process_error
-                  sdreport_detail = control$sdreport_detail
+                  #process_error = control$process_error
+                  #sdreport_detail = control$sdreport_detail
                   settings = settings
                   stanza_data = stanza_data
                   taxa = taxa
@@ -414,7 +431,7 @@ function( taxa,
   environment()
   on.exit( gc() )  # Seems necessary after environment()
   
-  # bundle and return output
+  # bundle and return output (all necessary inputs for compute_nll)
   internal = list(
     parhat = parhat,
     control = control,
@@ -423,6 +440,8 @@ function( taxa,
     Cobs_ti = Cobs_ti,
     Nobs_ta_g2 = Nobs_ta_g2,
     Wobs_ta_g2 = Wobs_ta_g2,
+    n_species = n_species,
+    noB_i = noB_i,
     # Avoid stuff that's in parhat
     #logPB_i = logPB_i, 
     #logQB_i = logQB_i, 
@@ -511,7 +530,7 @@ function( nlminb_loops = 1,
           trace = getOption("ecostate.trace", 0),
           verbose = getOption("ecostate.verbose", FALSE),
           profile = c("logF_ti","log_winf_z","s50_z","srate_z"),
-          random = c("epsilon_ti","alpha_ti","nu_ti"),
+          random = c("epsilon_ti","alpha_ti","nu_ti","phi_tg2"),
           tmb_par = NULL,
           map = NULL,
           getJointPrecision = FALSE,
@@ -607,6 +626,34 @@ function( x,
                  "diet_matrix" = out2, 
                  "vulnerability_matrix" = out3 )
   return(invisible(Return))
+}
+
+#' @title Marginal log-likelihood
+#'
+#' @description Extract the (marginal) log-likelihood of a ecostate model
+#'
+#' @param object Output from \code{\link{ecostate}}
+#' @param ... Not used
+#'
+#' @return object of class \code{logLik} with attributes
+#'   \item{val}{log-likelihood}
+#'   \item{df}{number of parameters}
+#' @importFrom stats logLik
+#'
+#' @return
+#' Returns an object of class logLik. This has attributes
+#' "df" (degrees of freedom) giving the number of (estimated) fixed effects
+#' in the model, abd "val" (value) giving the marginal log-likelihood.
+#' This class then allows \code{AIC} to work as expected.
+#'
+#' @export
+logLik.ecostate <- function(object, ...) {
+  val = -1 * object$opt$objective
+  df = length( object$opt$par )
+  out = structure( val,
+             df = df,
+             class = "logLik")
+  return(out)
 }
 
 #' @title Print fitted ecostate object

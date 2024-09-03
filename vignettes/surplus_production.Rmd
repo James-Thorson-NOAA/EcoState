@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 # Install locally
-#  devtools::install_local( R'(C:\Users\James.Thorson\Desktop\Git\ecostate)', force=TRUE )
+#  devtools::install_local( R'(C:\Users\James.Thorson\Desktop\Git\ecostate)', force=TRUE, dep=FALSE )
 #  devtools::install_github( 'James-Thorson-NOAA/ecostate', force=TRUE )
 # Build
 #  setwd(R'(C:\Users\James.Thorson\Desktop\Git\ecostate)'); devtools::build_rmd("vignettes/surplus_production.Rmd"); rmarkdown::render( "vignettes/surplus_production.Rmd", rmarkdown::pdf_document())
@@ -103,7 +103,7 @@ Next, we fit them with `ecostate`
 
 ```{r, echo=TRUE, message=TRUE, fig.width=7, fig.height=7}
 # Settings: specify what parameters to estimate
-fit_delta = taxa   # process errors
+fit_eps = taxa   # process errors
 fit_Q = taxa       # catchability coefficient
 fit_B0 = c()      # non-equilibrium initial condition
 fit_B = taxa       # equilibrium biomass
@@ -130,7 +130,7 @@ out0 = ecostate( taxa = taxa,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
-                fit_eps = fit_delta,
+                fit_eps = fit_eps,
                 fit_B0 = fit_B0,
                 control = ecostate_control( nlminb_loops = 0,
                                             getsd = FALSE ) )
@@ -155,7 +155,7 @@ out = ecostate( taxa = taxa,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
-                fit_eps = fit_delta,
+                fit_eps = fit_eps,
                 fit_B0 = fit_B0,
                 control = ecostate_control( map = map,
                                             tmb_par = pars ) )
@@ -180,6 +180,8 @@ prod_fun = function( biomass, Xprime, logPB, taxon, ecofit ){
                        type_i = type_i )
   p$logF_i = rep(log(0), n_taxa)
   p$epsilon_i = rep(0, n_taxa)
+  p$nu_i = rep(0, n_taxa)
+  p$phi_g2 = rep(0, ecofit$internal$settings$n_g2)
   data2 = local({
                   type_i = type_i
                   n_species = n_taxa
@@ -283,7 +285,7 @@ EE_i = c( 1, NA )
 B_i = c( NA, 1 )
 
 # Settings: specify what parameters to estimate
-fit_delta = "target"   # process errors
+fit_eps = "target"   # process errors
 fit_Q = "target"       # catchability coefficient
 fit_B0 = c()      # non-equilibrium initial condition
 fit_B = "target"       # equilibrium biomass
@@ -307,7 +309,7 @@ out_bivar = ecostate( taxa = taxa,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
-                fit_eps = fit_delta,
+                fit_eps = fit_eps,
                 fit_B0 = fit_B0,
                 control = ecostate_control() )
 
@@ -355,7 +357,7 @@ EE_i = c( 1, NA )
 B_i = c( NA, 1 )
 
 # Settings: specify what parameters to estimate
-fit_delta = "target"   # process errors
+fit_eps = "target"   # process errors
 fit_Q = "target"       # catchability coefficient
 fit_B0 = c()      # non-equilibrium initial condition
 fit_B = "target"       # equilibrium biomass
@@ -379,7 +381,7 @@ out_stanzas = ecostate( taxa = taxa,
                 U = U_i,
                 fit_B = fit_B,
                 fit_Q = fit_Q,
-                fit_eps = fit_delta,
+                fit_eps = fit_eps,
                 fit_B0 = fit_B0,
                 control = ecostate_control(),
                 settings = stanza_settings( taxa = taxa,
@@ -426,7 +428,7 @@ EE_i = c( 1, NA, NA )
 B_i = c( NA, NA, 1 )
 
 # Settings: specify what parameters to estimate
-fit_delta = c("stage1","stage2")   # process errors
+fit_eps = c("stage1","stage2")   # process errors
 fit_Q = "stage2"       # catchability coefficient
 fit_B0 = c()      # non-equilibrium initial condition
 fit_B = "stage2"       # equilibrium biomass
@@ -451,7 +453,7 @@ out_trivar = ecostate(
   U = U_i,
   fit_B = fit_B,
   fit_Q = fit_Q,
-  fit_eps = fit_delta,
+  fit_eps = fit_eps,
   fit_B0 = fit_B0,
   control = ecostate_control(),
   settings = stanza_settings( 

@@ -28,7 +28,8 @@
 dBdt <-
 function( Time, 
           State, 
-          Pars, 
+          Pars,
+          F_type = "integrated",
           what = "dBdt" ){     
 
   # Inputs from function call

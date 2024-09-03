@@ -54,7 +54,7 @@ function( Q_ij,
   #rownames(layout) = taxa_labels                       
   graph = igraph::graph_from_adjacency_matrix( Q_ij, 
                                        weighted = TRUE )
-  #plot( graph, 
+  #plot( graph,
   #           edge.width = log(E(graph)$weight),
   #           vertex.size = log(B_i/min(B_i)) + 10,
   #           type = "width", 

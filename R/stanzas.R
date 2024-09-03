@@ -15,7 +15,7 @@ function( settings ){
   }else{
     t2_s2 = vector()
   }
-  n_g2 = length(settings$unique_stanza_groups)
+  n_g2 = settings$n_g2
 
   # Checks for inputs for each taxa
   K_g2 = settings$K[settings$unique_stanza_groups]
@@ -271,7 +271,7 @@ function( p,
     # Eggs
     EggsStanza = SB_g2[g2] * p$SpawnX_g2[g2] / (p$SpawnX_g2[g2] - 1.0 + (SB_g2[g2] / p$baseSB_g2[g2]))
     # Apply to first age
-    Y_zz[which_z[1],'NageS'] = p$baseR0_g2[g2] * EggsStanza / p$baseEggs_g2[g2]
+    Y_zz[which_z[1],'NageS'] = p$baseR0_g2[g2] * EggsStanza / p$baseEggs_g2[g2] * exp(p$phi_g2[g2])
     Y_zz[which_z[1],'WageS'] = 0
     # Update QageS ... needed to calculate expected ration
     Y_zz[which_z,'QageS'] = Y_zz[which_z,'WageS'] ^ d_g2[g2]
@@ -332,6 +332,9 @@ function( p,
 
   # Project
   for( STEP in seq_len(STEPS_PER_YEAR) ){
+    # Load back in for update
+    p$Y_zz = Y_zz
+    # Get food gain
     dBdt_step = dBdt( Time = 0,
               State = y[xset[STEP],],
               #State = out$B_g2
@@ -339,10 +342,12 @@ function( p,
               what = "all")
     FoodGain = colSums(dBdt_step$Q_ij)
     #FoodGain = (t(rep(1,length(dBdt_step$G_i))) %*% dBdt_step$Q_ij)[1,]
+    # Update numbers
     Y_zz = update_stanzas( p = p,
                   stanza_data = stanza_data,
                   FoodGain_s = FoodGain,
-                  LossPropToB_s = dBdt_step$G_i,
+                  #LossPropToB_s = dBdt_step$G_i,
+                  LossPropToB_s = dBdt_step$M_i,
                   F_s = exp(p$logF_i),
                   STEPS_PER_YEAR = STEPS_PER_YEAR )
     if(record_steps){
@@ -391,7 +396,8 @@ function( taxa,
           Amax,
           SpawnX,
           STEPS_PER_YEAR = 1,
-          comp_weight = c("multinom","dir","dirmult") ){
+          comp_weight = c("multinom","dir","dirmult"),
+          correct_errors = FALSE ){
 
   # Necessary in packages
   "c" <- ADoverload("c")
@@ -423,7 +429,9 @@ function( taxa,
     Amax = Amax,
     SpawnX = SpawnX,
     STEPS_PER_YEAR = STEPS_PER_YEAR,
-    comp_weight = comp_weight
+    comp_weight = comp_weight,
+    n_g2 = length(unique_stanza_groups),
+    correct_errors = correct_errors
   ), class = "stanza_settings" )
 }
 
