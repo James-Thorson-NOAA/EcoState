@@ -4,7 +4,7 @@
 \alias{dBdt}
 \title{Dynamics from EcoSim}
 \usage{
-dBdt(Time, State, Pars, what = "dBdt")
+dBdt(Time, State, Pars, F_type = "integrated", what = "dBdt")
 }
 \arguments{
 \item{Time}{todo}

@@ -13,7 +13,8 @@ stanza_settings(
   Amax,
   SpawnX,
   STEPS_PER_YEAR = 1,
-  comp_weight = c("multinom", "dir", "dirmult")
+  comp_weight = c("multinom", "dir", "dirmult"),
+  correct_errors = FALSE
 )
 }
 \description{

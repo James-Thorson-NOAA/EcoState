@@ -14,7 +14,7 @@ ecostate_control(
   trace = getOption("ecostate.trace", 0),
   verbose = getOption("ecostate.verbose", FALSE),
   profile = c("logF_ti", "log_winf_z", "s50_z", "srate_z"),
-  random = c("epsilon_ti", "alpha_ti", "nu_ti"),
+  random = c("epsilon_ti", "alpha_ti", "nu_ti", "phi_tg2"),
   tmb_par = NULL,
   map = NULL,
   getJointPrecision = FALSE,
