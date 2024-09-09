@@ -69,7 +69,11 @@ We then reformat the various Rpath inputs.  In particular, we eliminate the pela
 #
 which_ecopath = setdiff(1:nrow(Ecopath), 66)
 taxa = c( Ecopath[which_ecopath,'Functional.group'], "benthic_detritus" )
-type = sapply( taxa, FUN=switch, "benthic_detritus"="detritus", "Large phytoplankton"="auto", "Small phytoplankton"="auto", "hetero" )
+type = sapply( taxa, FUN = switch, 
+                     "benthic_detritus" = "detritus", 
+                     "Large phytoplankton" = "auto", 
+                     "Small phytoplankton" = "auto", 
+                     "hetero" )
 PB = c( Ecopath[which_ecopath,'P.B'], 0.5 )
 QB = c( Ecopath[which_ecopath,'Q.B'], NA )
 B = c( Ecopath[which_ecopath,'Biomass'], NA )
@@ -164,9 +168,12 @@ out = run( map = map,
            getsd = TRUE )
 ```
 
-We can compare equilibrium biomass between packages, although these obviously differ because we are estimating equilibrium biomass for arrowtooth and cod:
+We can compare equilibrium biomass between packages.  These are identical for many taxa (because) we specify the same values for biomass for many taxa, and also differ for arrowtooth and cod because we are estimating equilibrium biomass for these two taxa:
 
 ```{r, echo=TRUE, message=FALSE, fig.width=7, fig.height=7}
+# runtime
+out$run_time
+
 # Compile stuff
 Borig = c( Ecopath[which_ecopath,'Biomass'], NA )
 Bhat = print_ecopars(out, silent=TRUE)[[1]][,'B']

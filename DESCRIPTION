@@ -18,8 +18,8 @@ Description: Fits a state-space extension of Ecopath with Ecosim (EwE)
 License: GPL-3
 Depends:
     R (>= 4.1.0),
-Imports:
     RTMB (>= 1.5.0),
+Imports:
     TMB,
     MASS,
     checkmate,
@@ -41,5 +41,7 @@ Remotes:
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 LazyData: true
+BuildVignettes: yes
 URL: https://james-thorson-noaa.github.io/EcoState/
 BugReports: https://github.com/James-Thorson-NOAA/EcoState/issues
+VignetteBuilder: knitr

@@ -23,7 +23,8 @@ function( settings ){
   Wmat_g2 = settings$Wmat[settings$unique_stanza_groups]
   SpawnX_g2 = settings$SpawnX[settings$unique_stanza_groups]
   Amax_s2 = settings$Amax[settings$multigroup_taxa]
-  Leading_s2 = unlist(tapply( Amax_s2, FUN=\(v) v==max(v), INDEX=g2_s2))
+  #Leading_s2 = unlist(tapply( Amax_s2, FUN=\(v) v==max(v), INDEX=g2_s2))
+  Leading_s2 = settings$Leading[settings$multigroup_taxa]
   plusage_g2 = tapply( Amax_s2, INDEX=g2_s2, FUN=max )
 
   # Variable-specific parameters
@@ -395,6 +396,8 @@ function( taxa,
           Wmat,
           Amax,
           SpawnX,
+          Leading,
+          fit_K = c(),
           STEPS_PER_YEAR = 1,
           comp_weight = c("multinom","dir","dirmult"),
           correct_errors = FALSE ){
@@ -412,6 +415,10 @@ function( taxa,
   # More defaults
   if(missing(SpawnX)) SpawnX = array(2, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
   if(missing(d)) d = array(2/3, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
+  if(missing(Leading)){
+    Leading = unlist(tapply( Amax, FUN=\(v) v==max(v), INDEX=match(stanza_groups, unique_stanza_groups) ))
+  }
+  names(Leading) = names(Amax)
 
   if( length(unique_stanza_groups)==0 ){
     K = d = Wmat = Amax = vector()
@@ -427,6 +434,8 @@ function( taxa,
     d = d,
     Wmat = Wmat,
     Amax = Amax,
+    fit_K = fit_K,
+    Leading = Leading,
     SpawnX = SpawnX,
     STEPS_PER_YEAR = STEPS_PER_YEAR,
     comp_weight = comp_weight,

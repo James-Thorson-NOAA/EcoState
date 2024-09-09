@@ -235,6 +235,8 @@ function( p ) {
       prob = Nexp_ta_g2[[index]][index2,which_obs] / sum(Nexp_ta_g2[[index]][index2,which_obs],na.rm=TRUE)
       if( settings$comp_weight == "multinom" ){
         loglik5_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
+        # relative deviance: https://stats.stackexchange.com/questions/186560/what-is-multinomial-deviance-in-the-glmnet-package
+        # dev5_tg2[t,g2] = loglik5_tg2[t,g2] - dmultinomial( obs, prob=obs/sum(obs), log=TRUE )
       }else if( settings$comp_weight == "dir" ){
         loglik5_tg2[t,g2] = ddirichlet( obs/sum(obs), alpha=prob*exp(p$compweight_z[index]), log=TRUE )
       }else{
@@ -245,11 +247,11 @@ function( p ) {
 
   # Empirical weight-at-age
   for( index in seq_along(Wobs_ta_g2) ){
-    g2 = match( names(Nobs_ta_g2)[index], settings$unique_stanza_groups )
+    g2 = match( names(Wobs_ta_g2)[index], settings$unique_stanza_groups )
     which_z = which( stanza_data$X_zz[,'g2'] == g2 )
     #weight_index = max(weight_index) + 1:2
-    for( index2 in seq_len(nrow(Nobs_ta_g2[[index]])) ){
-      t = match( rownames(Nobs_ta_g2[[index]])[index2], years )
+    for( index2 in seq_len(nrow(Wobs_ta_g2[[index]])) ){
+      t = match( rownames(Wobs_ta_g2[[index]])[index2], years )
       Wexp_a = Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
       for(z in which_z){
         Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + Y_tzz[t,z,'NageS']
@@ -276,8 +278,11 @@ function( p ) {
     }
   }}
 
+  # Calculate priors
+  log_prior_value = log_prior( p )
+
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
-  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2) + sum(loglik6_tg2) + sum(loglik7_tg2) )
+  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2) + sum(loglik6_tg2) + sum(loglik7_tg2) + log_prior_value )
   
   # Derived
   #N_at = apply( Y_tzz, MARGIN=1,
@@ -308,6 +313,7 @@ function( p ) {
   REPORT( loglik5_tg2 )
   REPORT( loglik6_tg2 )
   REPORT( loglik7_tg2 )
+  REPORT( log_prior_value )
   REPORT( jnll )
   REPORT( TL_ti )
   REPORT( Y_tzz )

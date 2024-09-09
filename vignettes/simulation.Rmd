@@ -109,7 +109,8 @@ simulate_data = function(){
     pars_t = Pars_full
     pars_t$logF_i = log(F_t)
     pars_t$epsilon_i = epsilon_ti[t,]
-    
+    pars_t$nu_i = rep(0,n_species)
+
     # Integrate dynamics annually
     data2 = local({
                     n_species = n_species
