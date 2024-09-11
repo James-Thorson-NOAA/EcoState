@@ -215,19 +215,20 @@ function( p ) {
   for( index in seq_along(Nobs_ta_g2) ){
     g2 = match( names(Nobs_ta_g2)[index], settings$unique_stanza_groups )
     which_z = which( stanza_data$X_zz[,'g2'] == g2 )
-    #selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - p$s50_z[index])/p$srate_z[index] )
-    which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
-    selex_a = plogis( (stanza_data$X_zz[which_z[which_a],'AGE'] - p$s50_z[index])/p$srate_z[index] )
+    selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - p$s50_z[index])/p$srate_z[index] )
+    #which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
+    #selex_a = plogis( (stanza_data$X_zz[which_z[which_a],'AGE'] - p$s50_z[index])/p$srate_z[index] )
     for( index2 in seq_len(nrow(Nobs_ta_g2[[index]])) ){
       t = match( rownames(Nobs_ta_g2[[index]])[index2], years )
       # Comps are average-year abundance (smears cohorts across adjacent years)
-      #Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
-      #for(z in which_z){
-      #  Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + selex_a[z]*Y_tzz[t,z,'NageS']
-      #}
+      Nexp_a = rep(0, max(stanza_data$X_zz[which_z,'age_class']+1)) * p$s50_z / p$s50_z # 0 through MaxAge so +1 length
+      for(z in which_z){
+        Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + selex_a[z]*Y_tzz[t,z,'NageS']
+      }
       # Comps are end-of-year abundance
-      which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
-      Nexp_a = selex_a * Y_tzz[t,which_z[which_a],'NageS']
+      #which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
+      #Nexp_a = selex_a * Y_tzz[t,which_z[which_a],'NageS']
+      # Record comps
       Nexp_ta_g2[[index]][index2,] = Nexp_a[-1]  # Remove age-0
       # Remove any NAs
       which_obs = which(!is.na((Nobs_ta_g2[[index]])[index2,]))
@@ -261,6 +262,7 @@ function( p ) {
         Wexp_a[stanza_data$X_zz[z,'age_class']+1] = Wexp_a[stanza_data$X_zz[z,'age_class']+1] + prop * Y_tzz[t,z,'WageS']
       }
       Wexp_ta_g2[[index]][index2,] = Wexp_a[-1] * exp(p$log_winf_z[index])   # Remove age-0
+      #Wexp_ta_g2[[index]][index2,] = Wexp_a[-1]   # Remove age-0
       obs = (Wobs_ta_g2[[index]])[index2,]
       mu = (Wexp_ta_g2[[index]])[index2,]
       for( index3 in seq_along(obs) ){

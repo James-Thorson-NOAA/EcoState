@@ -87,10 +87,9 @@ function( p,
 
   n_s2 = stanza_data$n_s2
   n_g2 = stanza_data$n_g2
-  #K_g2 = stanza_data$stanzainfo_g2z[,'K']
   d_g2 = stanza_data$stanzainfo_g2z[,'d']
   Wmat_g2 = stanza_data$stanzainfo_g2z[,'Wmat']
-  #SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
+  #Wmat_g2 = exp(p$log_winf_z[1]) * stanza_data$stanzainfo_g2z[,'Wmat']
   plusage_g2 = stanza_data$stanzainfo_g2z[,'plusage']
   stanzainfo_s2z = stanza_data$stanzainfo_s2z
   stanzainfo_g2z = stanza_data$stanzainfo_g2z
@@ -129,6 +128,7 @@ function( p,
     k = p$K_g2[g2] * 3
     d = d_g2[g2]
     WageS = (1 - exp(-k * (1 - d) * (AGE))) ^ (1 / (1 - d))
+    #WageS = exp(p$log_winf_z[1]) * (1 - exp(-k * (1 - d) * (AGE))) ^ (1 / (1 - d))
     QageS = WageS ^ d
 
     # SurvS
@@ -213,7 +213,7 @@ function( p,
   vbm_g2 = (1 - 3 * stanza_data$stanzainfo_g2z[,'K'] / STEPS_PER_YEAR)
   SB_g2 = exp(p$logPB_i)[stanza_data$stanzainfo_s2z[,'s']] # Get it to be class-advector
   Wmat_g2 = stanza_data$stanzainfo_g2z[,'Wmat']
-  #SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX']
+  #Wmat_g2 = exp(p$log_winf_z[1]) * stanza_data$stanzainfo_g2z[,'Wmat']
   Y_zz = p$Y_zz
   X_zz = stanza_data$X_zz
   d_g2 = stanza_data$stanzainfo_g2z[,'d']

@@ -41,7 +41,7 @@
 #'        parameters \code{out$obj$env$parList()} where \code{out} is the output from
 #'        \code{ecostate()}, and returns the log-prior probability.  For example
 #'        \code{log_prior = function(p) dnorm( p$logq_i[1], mean=0, sd=0.1, log=TRUE)}
-#'        includes a lognormal prior probability for the catchability coefficient
+#'        specifies a lognormal prior probability for the catchability coefficient
 #'        for the first \code{taxa} with logmean of zero and logsd of 0.1
 #' @param control Output from [ecostate_control()], used to define user
 #'        settings.
