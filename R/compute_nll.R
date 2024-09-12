@@ -289,6 +289,9 @@ function( p ) {
   # Derived
   #N_at = apply( Y_tzz, MARGIN=1,
   #              FUN=\(M) tapply(M[,'NageS'],INDEX=stanza_data$X_zz[,'age_class'],FUN=mean) )
+  h_g2 = 0.2 * p$SpawnX_g2 / (p$SpawnX_g2 - 1 + 0.2)
+  REPORT( h_g2 )
+  ADREPORT( h_g2 )
 
   # Reporting
   REPORT( B_ti )
@@ -332,6 +335,11 @@ function( p ) {
 
   if( control$sdreport_detail >= 1 ){
     ADREPORT( B_ti )
+    # Relative biomass ... outer(.) and X %o% are failing
+    relB_ti = B_ti
+    for(t in 1:nrow(relB_ti)) relB_ti[t,] = B_ti[t,] / out_initial$B_i
+    REPORT( relB_ti )
+    ADREPORT( relB_ti )
   }
   if( control$sdreport_detail >= 2 ){
     ADREPORT( Chat_ti )
