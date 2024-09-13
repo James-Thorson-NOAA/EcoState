@@ -234,14 +234,16 @@ function( p ) {
       which_obs = which(!is.na((Nobs_ta_g2[[index]])[index2,]))
       obs = (Nobs_ta_g2[[index]])[index2,which_obs]
       prob = Nexp_ta_g2[[index]][index2,which_obs] / sum(Nexp_ta_g2[[index]][index2,which_obs],na.rm=TRUE)
-      if( settings$comp_weight == "multinom" ){
-        loglik5_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
-        # relative deviance: https://stats.stackexchange.com/questions/186560/what-is-multinomial-deviance-in-the-glmnet-package
-        # dev5_tg2[t,g2] = loglik5_tg2[t,g2] - dmultinomial( obs, prob=obs/sum(obs), log=TRUE )
-      }else if( settings$comp_weight == "dir" ){
-        loglik5_tg2[t,g2] = ddirichlet( obs/sum(obs), alpha=prob*exp(p$compweight_z[index]), log=TRUE )
-      }else{
-        loglik5_tg2[t,g2] = ddirmult( obs, prob=prob, ln_theta=p$compweight_z[index], log=TRUE )
+      if(!any(is.na(obs))){
+        if( settings$comp_weight == "multinom" ){
+          loglik5_tg2[t,g2] = dmultinomial( obs, prob=prob, log=TRUE )
+          # relative deviance: https://stats.stackexchange.com/questions/186560/what-is-multinomial-deviance-in-the-glmnet-package
+          # dev5_tg2[t,g2] = loglik5_tg2[t,g2] - dmultinomial( obs, prob=obs/sum(obs), log=TRUE )
+        }else if( settings$comp_weight == "dir" ){
+          loglik5_tg2[t,g2] = ddirichlet( obs/sum(obs), alpha=prob*exp(p$compweight_z[index]), log=TRUE )
+        }else{
+          loglik5_tg2[t,g2] = ddirmult( obs, prob=prob, ln_theta=p$compweight_z[index], log=TRUE )
+        }
       }
     }
   }
@@ -284,7 +286,7 @@ function( p ) {
   log_prior_value = log_prior( p )
 
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
-  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2) + sum(loglik6_tg2) + sum(loglik7_tg2) + log_prior_value )
+  jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2,na.rm=TRUE) + sum(loglik6_tg2) + sum(loglik7_tg2) + log_prior_value )
   
   # Derived
   #N_at = apply( Y_tzz, MARGIN=1,
