@@ -155,3 +155,47 @@ function( x,
   if(log){ return(logres) }else{ return(exp(logres)) }
 }
 
+combine_groups <-
+function( taxa_list,
+          B,
+          PB,
+          QB,
+          DC ){
+
+  # Aggregate rates
+  PB_i = sapply( taxa_list, FUN=\(x){
+               if(length(x)==1){
+                 PB[match(x,names(PB))]
+               }else{
+                 weighted.mean(x=PB[match(x,names(PB))], w=B[match(x,names(B))], na.rm=TRUE)
+               }
+             } )
+  QB_i = sapply( taxa_list, FUN=\(x){
+               if(length(x)==1){
+                 QB[match(x,names(PB))]
+               }else{
+                 weighted.mean(x=QB[match(x,names(QB))], w=B[match(x,names(B))])
+               }
+             } )
+  B_i = sapply( taxa_list, FUN=\(x){
+               sum(B[match(x,names(B))],na.rm=TRUE)
+             } )
+  names(PB_i) = names(QB_i) = names(taxa_list)
+
+  # Aggregate diet matrix
+  DC2 = t(sapply( taxa_list, FUN=\(x){
+               colSums(DC[match(x,rownames(DC)),,drop=FALSE],na.rm=TRUE)
+             } ))
+  DC_ij = sapply( taxa_list, FUN=\(x){
+               w = B[match(x,names(B))]
+               rowSums(DC2[,match(x,colnames(DC2)),drop=FALSE] * outer(rep(1,nrow(DC2)),w) / sum(w), na.rm=TRUE )
+             } )
+
+  out = list(
+    PB_i = PB_i,
+    QB_i = QB_i,
+    B_i = B_i,
+    DC_ij = DC_ij
+  )
+  return(out)
+}

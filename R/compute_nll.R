@@ -63,19 +63,25 @@ function( p ) {
   if( control$process_error == "alpha" ){
     epsilon_ti[1,] = p$alpha_ti[1,] 
   }
-  Y_zz = p$Y_zz
+  Y_zz_g2 = p$Y_zz_g2
 
   # 
-  Y_tzz = array( 0.0, dim=c(nrow(Bobs_ti),dim(p$Y_zz)),
-                 dimnames=list(NULL,rownames(p$Y_zz),colnames(p$Y_zz)) ) # dimnames-list dimension matching
-  Y_tzz[1,,] = Y_zz
+  Y_tzz_g2 = NULL
+  for( g2 in seq_along(Y_zz_g2) ){
+    Y_tzz_g2[[g2]] = array( 0.0, dim=c(nrow(Bobs_ti),dim(p$Y_zz_g2[[g2]])),
+                 dimnames=list(NULL,rownames(p$Y_zz_g2[[g2]]),colnames(p$Y_zz_g2[[g2]])) )
+    Y_tzz_g2[[g2]][1,,] = Y_zz_g2[[g2]]
+  }
+  #Y_tzz = array( 0.0, dim=c(nrow(Bobs_ti),dim(p$Y_zz)),
+  #               dimnames=list(NULL,rownames(p$Y_zz),colnames(p$Y_zz)) ) # dimnames-list dimension matching
+  #Y_tzz[1,,] = Y_zz
 
   # Loop through years
   for( t in 2:nrow(B_ti) ){
   #for( t in 2:66 ){
     # Assemble inputs
     p_t = p
-    p_t$Y_zz = Y_zz
+    p_t$Y_zz_g2 = Y_zz_g2
     p_t$logF_i = p$logF_ti[t,]
 
     # State-space or continuous innovations
@@ -111,14 +117,17 @@ function( p ) {
                    STEPS_PER_YEAR = settings$STEPS_PER_YEAR,
                    record_steps = FALSE,
                    correct_errors = settings$correct_errors ) # Have used TRUE
-      Y_zz = proj_stanzas$Y_zz
-      Y_tzz[t,,] = Y_zz
+      #Y_zz = proj_stanzas$Y_zz
+      #Y_tzz[t,,] = Y_zz
+      Y_zz_g2 = proj_stanzas$Y_zz_g2
+      for( g2 in seq_along(Y_zz_g2) ){
+        Y_tzz_g2[[g2]][t,,] = Y_zz_g2[[g2]]
+      }
 
       #
       Bnew_s2 = get_stanza_total( stanza_data = stanza_data,
-                                  #Y_zz = p_t$Y_zz )    OLD VERSION SEEMS WRONG
-                                  Y_zz = Y_zz )
-      #Bnew_i[p_t$stanzainfo_s2z[,'s']] = Bnew_s2
+                                  #Y_zz = Y_zz )
+                                  Y_zz_g2 = Y_zz_g2 )
       Bnew_i[stanza_data$stanzainfo_s2z[,'s']] = Bnew_s2
     }
 
@@ -214,22 +223,29 @@ function( p ) {
   #selex_index = 0
   for( index in seq_along(Nobs_ta_g2) ){
     g2 = match( names(Nobs_ta_g2)[index], settings$unique_stanza_groups )
-    which_z = which( stanza_data$X_zz[,'g2'] == g2 )
-    selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - p$s50_z[index])/p$srate_z[index] )
+    #which_z = which( stanza_data$X_zz[,'g2'] == g2 )
+    #selex_a = plogis( (stanza_data$X_zz[which_z,'AGE'] - p$s50_z[index])/p$srate_z[index] )
     #which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
     #selex_a = plogis( (stanza_data$X_zz[which_z[which_a],'AGE'] - p$s50_z[index])/p$srate_z[index] )
+    Xg2_zz = stanza_data$X_zz_g2[[g2]]
+    Yg2_tzz = Y_tzz_g2[[g2]]
+    selex_a = plogis( (Xg2_zz[,'AGE'] - p$s50_z[index])/p$srate_z[index] )
     for( index2 in seq_len(nrow(Nobs_ta_g2[[index]])) ){
       t = match( rownames(Nobs_ta_g2[[index]])[index2], years )
       # Comps are average-year abundance (smears cohorts across adjacent years)
-      Nexp_a = rep(0, max(stanza_data$X_zz[which_z,'age_class']+1)) * p$s50_z / p$s50_z # 0 through MaxAge so +1 length
-      for(z in which_z){
-        Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + selex_a[z]*Y_tzz[t,z,'NageS']
+      #Nexp_a = rep(0, max(stanza_data$X_zz[which_z,'age_class']+1)) * p$s50_z / p$s50_z # 0 through MaxAge so +1 length
+      #for(z in which_z){
+      #  Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + selex_a[z]*Y_tzz[t,z,'NageS']
+      #}
+      Nexp_a = rep(0, max(Xg2_zz[,'age_class']+1)) * p$s50_z[index] / p$s50_z[index] # 0 through MaxAge so +1 length
+      for( z in seq_len(nrow(Xg2_zz)) ){
+        Nexp_a[Xg2_zz[z,'age_class']+1] = Nexp_a[Xg2_zz[z,'age_class']+1] + selex_a[z]*Yg2_tzz[t,z,'NageS']
       }
       # Comps are end-of-year abundance
       #which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
       #Nexp_a = selex_a * Y_tzz[t,which_z[which_a],'NageS']
       # Record comps
-      Nexp_ta_g2[[index]][index2,] = Nexp_a[-1]  # Remove age-0
+      Nexp_ta_g2[[index]][index2,] = Nexp_a[-1] + settings$min_agecomp_prob  # Remove age-0 ... add 1e-12 to avoid prob=0, which crashes gradients
       # Remove any NAs
       which_obs = which(!is.na((Nobs_ta_g2[[index]])[index2,]))
       obs = (Nobs_ta_g2[[index]])[index2,which_obs]
@@ -251,17 +267,27 @@ function( p ) {
   # Empirical weight-at-age
   for( index in seq_along(Wobs_ta_g2) ){
     g2 = match( names(Wobs_ta_g2)[index], settings$unique_stanza_groups )
-    which_z = which( stanza_data$X_zz[,'g2'] == g2 )
+    #which_z = which( stanza_data$X_zz[,'g2'] == g2 )
+    Xg2_zz = stanza_data$X_zz_g2[[g2]]
+    Yg2_tzz = Y_tzz_g2[[g2]]
     #weight_index = max(weight_index) + 1:2
     for( index2 in seq_len(nrow(Wobs_ta_g2[[index]])) ){
       t = match( rownames(Wobs_ta_g2[[index]])[index2], years )
-      Wexp_a = Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
-      for(z in which_z){
-        Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + Y_tzz[t,z,'NageS']
+      #Wexp_a = Nexp_a = rep(0,max(stanza_data$X_zz[which_z,'age_class']+1)) # 0 through MaxAge so +1 length
+      #for(z in which_z){
+      #  Nexp_a[stanza_data$X_zz[z,'age_class']+1] = Nexp_a[stanza_data$X_zz[z,'age_class']+1] + Y_tzz[t,z,'NageS']
+      #}
+      #for(z in which_z){
+      #  prop = Y_tzz[t,z,'NageS'] / Nexp_a[stanza_data$X_zz[z,'age_class']+1]
+      #  Wexp_a[stanza_data$X_zz[z,'age_class']+1] = Wexp_a[stanza_data$X_zz[z,'age_class']+1] + prop * Y_tzz[t,z,'WageS']
+      #}
+      Wexp_a = Nexp_a = rep(0,max(Xg2_zz[,'age_class']+1)) # 0 through MaxAge so +1 length
+      for( z in seq_len(nrow(Xg2_zz)) ){
+        Nexp_a[Xg2_zz[z,'age_class']+1] = Nexp_a[Xg2_zz[z,'age_class']+1] + Yg2_tzz[t,z,'NageS']
       }
-      for(z in which_z){
-        prop = Y_tzz[t,z,'NageS'] / Nexp_a[stanza_data$X_zz[z,'age_class']+1]
-        Wexp_a[stanza_data$X_zz[z,'age_class']+1] = Wexp_a[stanza_data$X_zz[z,'age_class']+1] + prop * Y_tzz[t,z,'WageS']
+      for( z in seq_len(nrow(Xg2_zz)) ){
+        prop = Yg2_tzz[t,z,'NageS'] / Nexp_a[Xg2_zz[z,'age_class']+1]
+        Wexp_a[Xg2_zz[z,'age_class']+1] = Wexp_a[Xg2_zz[z,'age_class']+1] + prop * Yg2_tzz[t,z,'WageS']
       }
       Wexp_ta_g2[[index]][index2,] = Wexp_a[-1] * exp(p$log_winf_z[index])   # Remove age-0
       #Wexp_ta_g2[[index]][index2,] = Wexp_a[-1]   # Remove age-0
@@ -323,7 +349,8 @@ function( p ) {
   REPORT( log_prior_value )
   REPORT( jnll )
   REPORT( TL_ti )
-  REPORT( Y_tzz )
+  #REPORT( Y_tzz )
+  REPORT( Y_tzz_g2 )
   REPORT( stanza_data )
   REPORT( Nexp_ta_g2 )
   REPORT( Wexp_ta_g2 )
@@ -337,13 +364,15 @@ function( p ) {
 
   if( control$sdreport_detail >= 1 ){
     ADREPORT( B_ti )
+  }
+  if( control$sdreport_detail >= 2 ){
     # Relative biomass ... outer(.) and X %o% are failing
     relB_ti = B_ti
     for(t in 1:nrow(relB_ti)) relB_ti[t,] = B_ti[t,] / out_initial$B_i
     REPORT( relB_ti )
     ADREPORT( relB_ti )
   }
-  if( control$sdreport_detail >= 2 ){
+  if( control$sdreport_detail >= 3 ){
     ADREPORT( Chat_ti )
     ADREPORT( Bexp_ti )
     ADREPORT( G_ti )

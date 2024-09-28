@@ -224,27 +224,28 @@ function( taxa,
             log_winf_z = rep(0, n_weight),
             ln_sdW_z = rep(0, n_weight),
             SpawnX_g2 = stanza_data$stanzainfo_g2z[,'SpawnX'],
-            K_g2 = stanza_data$stanzainfo_g2z[,'K']
+            log_K_g2 = log(stanza_data$stanzainfo_g2z[,'K']),
+            logit_d_g2 = qlogis(stanza_data$stanzainfo_g2z[,'d']),
+            Wmat_g2 = stanza_data$stanzainfo_g2z[,'Wmat']
   )      # , PB_i=PB_i
 
   # 
   map = list()
   
-  # 
-  #map$logPB_i = factor( rep(NA,n_species) )
+  # map these off by default
   map$logQB_i = factor( rep(NA,n_species) )
   map$U_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
   map$Xprime_ij = factor( array(NA,dim=dim(p$Xprime_ij)) )
   map$SpawnX_g2 = factor( rep(NA,length(p$SpawnX_g2)) )
+  map$Wmat_g2 = factor( rep(NA,length(p$Wmat_g2)) )
 
-  #
+  # map these off based on options
   map$logPB_i = factor( ifelse(taxa %in% fit_PB, seq_len(n_species), NA) )
+  map$log_K_g2 = factor(ifelse(settings$unique_stanza_groups %in% settings$fit_K, seq_len(settings$n_g2), NA)) #  factor( rep(NA,length(p$K_g2)) )
+  map$logit_d_g2 = factor(ifelse(settings$unique_stanza_groups %in% settings$fit_d, seq_len(settings$n_g2), NA)) #  factor( rep(NA,length(p$K_g2)) )
 
   #
-  map$K_g2 = factor(ifelse(settings$unique_stanza_groups %in% settings$fit_K, seq_len(settings$n_g2), NA)) #  factor( rep(NA,length(p$K_g2)) )
-
-  # 
   p$logtau_i = ifelse(taxa %in% fit_eps, log(control$start_tau), NA)
   map$logtau_i = factor(ifelse(taxa %in% fit_eps, seq_len(n_species), NA))
   
@@ -417,11 +418,22 @@ function( taxa,
                                   trace = control$trace ) )
   }
 
+  #
+  get_hessian = function(obj,par){
+    if(is.null(obj$random) & is.null(obj$profile)){
+      H = obj$he(x=par)
+    }else{
+      H = optimHess(par, fn=obj$fn, gr=obj$gr)
+    }
+    return(H)
+  }
+
   # Newtonsteps
   for( i in seq_len(max(0,control$newton_loops)) ){
     if( isFALSE(control$quiet) ) message("Running newton_loop #", i)
     g = as.numeric( obj$gr(opt$par) )
-    h = optimHess(opt$par, fn=obj$fn, gr=obj$gr)
+    #h = optimHess(opt$par, fn=obj$fn, gr=obj$gr)
+    h = get_hessian(obj=obj, par=opt$par)
     opt$par = opt$par - solve(h, g)
     opt$objective = obj$fn(opt$par)
   }
@@ -430,9 +442,10 @@ function( taxa,
 
   # sdreport
   if( isTRUE(control$getsd) ){
-    hessian.fixed = optimHess( par = opt$par, 
-                      fn = obj$fn, 
-                      gr = obj$gr )
+    #hessian.fixed = optimHess( par = opt$par, 
+    #                  fn = obj$fn, 
+    #                  gr = obj$gr )
+    hessian.fixed = get_hessian(obj=obj, par=opt$par)
     sdrep = sdreport( obj,
                       par.fixed = opt$par,
                       hessian.fixed = hessian.fixed,
