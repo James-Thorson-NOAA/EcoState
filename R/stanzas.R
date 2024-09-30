@@ -198,7 +198,7 @@ function( p,
     }
 
     # Stack
-    Yg2_zz = cbind( WageS=WageS, NageS=NageS, QageS=QageS, SplitAlpha=SplitAlpha)
+    Yg2_zz = cbind( WageS=WageS, log_NageS=log(NageS), QageS=QageS, SplitAlpha=SplitAlpha)
     #Y_zz = rbind( Y_zz, Yg2_zz )  # deparse.level=0 avoids RTMB error
     Y_zz_g2[[g2]] = Yg2_zz
   }
@@ -229,7 +229,8 @@ function( p,
   "[<-" <- ADoverload("[<-")
   # Globals
   vbm_g2 = (1 - 3 * stanza_data$stanzainfo_g2z[,'K'] / STEPS_PER_YEAR)
-  SB_g2 = exp(p$logPB_i)[stanza_data$stanzainfo_s2z[,'s']] # Get it to be class-advector
+  #SB_g2 = exp(p$logPB_i)[stanza_data$stanzainfo_s2z[,'s']] # Get it to be class-advector
+  SB_g2 = Eggs_g2 = rep(0, stanza_data$n_g2 )
   Wmat_g2 = p$Wmat_g2
   Amat_g2 = stanza_data$stanzainfo_g2z[,'Amat']
   #Wmat_g2 = exp(p$log_winf_z[1]) * stanza_data$stanzainfo_g2z[,'Wmat']
@@ -248,12 +249,28 @@ function( p,
   #}
 
   # Increase age given plus group
+  fmax = function(a,b){
+    (a + b + abs(a-b) ) / 2
+  }
+  logspace_add <- function(logx, logy) {
+    # https://github.com/kaskr/adcomp/issues/236
+    # https://stackoverflow.com/questions/65233445/how-to-calculate-sums-in-log-space-without-underflow
+    fmax(logx, logy) + log1p(exp(-abs(logx - logy)))
+  }
   increase_vector = function(vec, plus_group="average"){
     "c" <- ADoverload("c")  # Necessary in packages
     "[<-" <- ADoverload("[<-")
     out = c( 0, vec[-length(vec)] )
-    out[length(out)] = out[length(out)] + vec[length(out)]
-    if(plus_group=="average") out[length(out)] = out[length(out)] / 2
+    if(plus_group=="add"){
+      out[length(out)] = out[length(out)] + vec[length(out)]
+    }
+    if(plus_group=="logspace_add"){
+      out[length(out)] = logspace_add( out[length(out)], vec[length(out)] )
+      #out[length(out)] = log( exp(out[length(out)]) + exp(vec[length(out)]) )
+    }
+    if(plus_group=="average"){
+      out[length(out)] = (out[length(out)] + vec[length(out)]) / 2
+    }
     return(out)
   }
   pos = function(x){
@@ -263,6 +280,7 @@ function( p,
   }
   # Loop through stanza-variables
   # Only does a single STEP of STEPS_PER_YEAR: Allows p to have updated B_t for each step
+  Z_s2 = QB_s2 = rep( 0, nrow(stanza_data$stanzainfo_s2z) )
   for( s2 in seq_len(nrow(stanza_data$stanzainfo_s2z)) ){
     g2 = stanza_data$stanzainfo_s2z[s2,'g2']
     t2 = stanza_data$stanzainfo_s2z[s2,'t2']
@@ -272,50 +290,45 @@ function( p,
 
     #
     stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),,drop=FALSE]
-    #which_z = which( (X_zz[,'g2']==stanza_data$stanzainfo_s2z[s2,'g2']) & (X_zz[,'t2']==stanza_data$stanzainfo_s2z[s2,'t2']) )
     which_z = which( Xg2_zz[,'t2']==stanza_data$stanzainfo_s2z[s2,'t2'] )
 
     #
-    #stanzaPred = sum( Y_zz[which_z,'NageS'] * Y_zz[which_z,'QageS'] )
-    #state_Biomass = sum( Y_zz[which_z,'NageS'] * Y_zz[which_z,'WageS'] )
-    stanzaPred = sum( Yg2_zz[which_z,'NageS'] * Yg2_zz[which_z,'QageS'] )
-    state_Biomass = sum( Yg2_zz[which_z,'NageS'] * Yg2_zz[which_z,'WageS'] )
+    stanzaPred = sum( exp(Yg2_zz[which_z,'log_NageS']) * Yg2_zz[which_z,'QageS'] )
+    state_Biomass = sum( exp(Yg2_zz[which_z,'log_NageS']) * Yg2_zz[which_z,'WageS'] )
 
     # Copy ecosim.cpp#L890
-    Zrate = (LossPropToB_s[s] / state_Biomass) + F_s[s]
-    Su = exp(-Zrate / STEPS_PER_YEAR);
-    Gf = FoodGain_s[s] / stanzaPred;
+    Z_s2[s2] = (LossPropToB_s[s] / state_Biomass) + F_s[s]
+    #Su = exp(-Zrate / STEPS_PER_YEAR);
+    log_Su = -Z_s2[s2] / STEPS_PER_YEAR
+    QB_s2[s2] = FoodGain_s[s] / stanzaPred
 
     # Vectorized version
-    #Y_zz[which_z,'NageS'] = Y_zz[which_z,'NageS'] * Su;
-    #Y_zz[which_z,'WageS'] = vbm_g2[g2] * Y_zz[which_z,'WageS'] + Gf * Y_zz[which_z,'SplitAlpha']
-    Yg2_zz[which_z,'NageS'] = Yg2_zz[which_z,'NageS'] * Su;
-    Yg2_zz[which_z,'WageS'] = vbm_g2[g2] * Yg2_zz[which_z,'WageS'] + Gf * Yg2_zz[which_z,'SplitAlpha']
+    #Yg2_zz[which_z,'NageS'] = Yg2_zz[which_z,'NageS'] * Su;
+    Yg2_zz[which_z,'log_NageS'] = Yg2_zz[which_z,'log_NageS'] + log_Su;
+    Yg2_zz[which_z,'WageS'] = vbm_g2[g2] * Yg2_zz[which_z,'WageS'] + QB_s2[s2] * Yg2_zz[which_z,'SplitAlpha']
     Y_zz_g2[[g2]] = Yg2_zz
     # W(a+1) = vbm_g2 * W(a) + (Food/Pred) * SplitAlpha(a)
     # SplitAlpha = (W(a+1) - vbm_g2 * W(a)) / (Food/Pred)
   }
 
   # Loop through multi-stanza groups
+  # Could replace sum(exp(x)) using: https://stackoverflow.com/questions/65233445/how-to-calculate-sums-in-log-space-without-underflow
   for( g2 in seq_len(stanza_data$n_g2) ){
     # Record SpawnBiomass
     Yg2_zz = Y_zz_g2[[g2]]
-    #which_z = which(X_zz[,'g2']==g2)
-    #SB_g2[g2] = sum(Y_zz[which_z,'NageS'] * pos(Y_zz[which_z,'WageS'] - Wmat_g2[g2]))
-    SB_g2[g2] = sum(Yg2_zz[,'NageS'] * pos(Yg2_zz[,'WageS'] - Wmat_g2[g2]))
+    #SB_g2[g2] = sum(Yg2_zz[,'NageS'] * pos(Yg2_zz[,'WageS'] - Wmat_g2[g2]))
+    SB_g2[g2] = sum( exp(Yg2_zz[,'log_NageS']) * pos(Yg2_zz[,'WageS'] - Wmat_g2[g2]))
 
     # Plus-group
-    #Y_zz[which_z,'NageS'] = increase_vector(Y_zz[which_z,'NageS'], plus_group="add")
-    #Y_zz[which_z,'WageS'] = increase_vector(Y_zz[which_z,'WageS'], plus_group="average")
-    Yg2_zz[,'NageS'] = increase_vector(Yg2_zz[,'NageS'], plus_group="add")
+    #Yg2_zz[,'NageS'] = increase_vector(Yg2_zz[,'NageS'], plus_group="add")
+    Yg2_zz[,'log_NageS'] = increase_vector(Yg2_zz[,'log_NageS'], plus_group="logspace_add")
     Yg2_zz[,'WageS'] = increase_vector(Yg2_zz[,'WageS'], plus_group="average")
 
     # Eggs
-    EggsStanza = SB_g2[g2] * p$SpawnX_g2[g2] / (p$SpawnX_g2[g2] - 1.0 + (SB_g2[g2] / p$baseSB_g2[g2]))
+    Eggs_g2[g2] = SB_g2[g2] * p$SpawnX_g2[g2] / (p$SpawnX_g2[g2] - 1.0 + (SB_g2[g2] / p$baseSB_g2[g2]))
     # Apply to first age
-    #Y_zz[which_z[1],'NageS'] = p$baseR0_g2[g2] * EggsStanza / p$baseEggs_g2[g2] * exp(p$phi_g2[g2])
-    #Y_zz[which_z[1],'WageS'] = 0
-    Yg2_zz[1,'NageS'] = p$baseR0_g2[g2] * EggsStanza / p$baseEggs_g2[g2] * exp(p$phi_g2[g2])
+    #Yg2_zz[1,'NageS'] = p$baseR0_g2[g2] * EggsStanza / p$baseEggs_g2[g2] * exp(p$phi_g2[g2])
+    Yg2_zz[1,'log_NageS'] = log(p$baseR0_g2[g2] * Eggs_g2[g2] / p$baseEggs_g2[g2]) + p$phi_g2[g2]
     Yg2_zz[1,'WageS'] = 0
     # Update QageS ... needed to calculate expected ration
     Yg2_zz[,'QageS'] = Yg2_zz[,'WageS'] ^ d_g2[g2]
@@ -324,8 +337,14 @@ function( p,
 
 
   # Update and return
-  #return(Y_zz)
-  return(Y_zz_g2)
+  out = list(
+    Y_zz_g2 = Y_zz_g2,
+    SB_g2 = SB_g2,
+    Z_s2 = Z_s2,
+    QB_s2 = QB_s2,
+    Eggs_g2 = Eggs_g2
+  )
+  return(out)
 }
 
 #' @export
@@ -351,13 +370,11 @@ function( stanza_data,
 
     #
     stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),,drop=FALSE]
-    #age_vec = which( X_zz[which(X_zz[,'g2']==g2),'t2'] == stanzainfo_t2z[t2,'t2'] )
-    #which_z = which(X_zz[,'g2']==g2)[age_vec]
     which_z = which( Xg2_zz[,'t2'] == stanzainfo_t2z[t2,'t2'] )
-    #if(what=="Biomass") Y_s2[s2] = sum(Y_zz[which_z,'NageS'] * Y_zz[which_z,'WageS'], na.rm=TRUE)
-    #if(what=="Abundance") Y_s2[s2] = sum(Y_zz[which_z,'NageS'], na.rm=TRUE)
-    if(what=="Biomass") Y_s2[s2] = sum(Yg2_zz[which_z,'NageS'] * Yg2_zz[which_z,'WageS'], na.rm=TRUE)
-    if(what=="Abundance") Y_s2[s2] = sum(Yg2_zz[which_z,'NageS'], na.rm=TRUE)
+    #if(what=="Biomass") Y_s2[s2] = sum(Yg2_zz[which_z,'NageS'] * Yg2_zz[which_z,'WageS'], na.rm=TRUE)
+    if(what=="Biomass") Y_s2[s2] = sum( exp(Yg2_zz[which_z,'log_NageS']) * Yg2_zz[which_z,'WageS'], na.rm=TRUE)
+    #if(what=="Abundance") Y_s2[s2] = sum(Yg2_zz[which_z,'NageS'], na.rm=TRUE)
+    if(what=="Abundance") Y_s2[s2] = sum( exp(Yg2_zz[which_z,'log_NageS']), na.rm=TRUE)
   }
   return(Y_s2)
 }
@@ -382,6 +399,8 @@ function( p,
   if(record_steps) record = NULL
   #Y_zz = p$Y_zz
   Y_zz_g2 = p$Y_zz_g2
+  TotalSB_g2 = TotalEggs_g2 = rep( 0, stanza_data$n_g2 )
+  TotalZ_s2 = rep( 0, stanza_data$n_s2 )
 
   # Project
   for( STEP in seq_len(STEPS_PER_YEAR) ){
@@ -396,8 +415,7 @@ function( p,
     FoodGain = colSums(dBdt_step$Q_ij)
     #FoodGain = (t(rep(1,length(dBdt_step$G_i))) %*% dBdt_step$Q_ij)[1,]
     # Update numbers
-    #Y_zz = update_stanzas(
-    Y_zz_g2 = update_stanzas(
+    updated_values = update_stanzas(
                   p = p,
                   stanza_data = stanza_data,
                   FoodGain_s = FoodGain,
@@ -405,11 +423,15 @@ function( p,
                   LossPropToB_s = dBdt_step$M_i,
                   F_s = exp(p$logF_i),
                   STEPS_PER_YEAR = STEPS_PER_YEAR )
-    if(record_steps){
-      B_s2 = get_stanza_total( stanza_data = stanza_data,
-                                 Y_zz = Y_zz )
-      record = rbind(record, B_s2)
-    }
+    Y_zz_g2 = updated_values$Y_zz_g2
+    TotalEggs_g2 = TotalEggs_g2 + updated_values$Eggs_g2
+    TotalSB_g2 = TotalSB_g2 + updated_values$SB_g2
+    TotalZ_s2 = TotalZ_s2 + updated_values$Z_s2
+    #if(record_steps){
+    #  B_s2 = get_stanza_total( stanza_data = stanza_data,
+    #                             Y_zz = Y_zz )
+    #  record = rbind(record, B_s2)
+    #}
   }
 
   if(correct_errors){
@@ -419,11 +441,10 @@ function( p,
                                Y_zz_g2 = Y_zz_g2 )
     # Loop through multi-stanza groups
     for( g2 in seq_len(stanza_data$n_g2) ){
-      #which_z = which(stanza_data$X_zz[,'g2']==g2)
       stanzainfo_t2z = stanza_data$stanzainfo_s2z[which(stanza_data$stanzainfo_s2z[,'g2']==g2),,drop=FALSE]
       error_t2 = B_s2[stanzainfo_t2z[,'s2']] / y[nrow(y),stanzainfo_t2z[,'s']]
-      #Y_zz[which_z,'NageS'] = Y_zz[which_z,'NageS'] / error_t2[stanza_data$X_zz[which_z,'t2']]
-      Y_zz_g2[[g2]][,'NageS'] = Y_zz_g2[[g2]][,'NageS'] / error_t2[stanza_data$X_zz_g2[[g2]][,'t2']]
+      #Y_zz_g2[[g2]][,'NageS'] = Y_zz_g2[[g2]][,'NageS'] / error_t2[stanza_data$X_zz_g2[[g2]][,'t2']]
+      Y_zz_g2[[g2]][,'log_NageS'] = Y_zz_g2[[g2]][,'log_NageS'] - log(error_t2[stanza_data$X_zz_g2[[g2]][,'t2']])
     }
   }
 
@@ -435,8 +456,11 @@ function( p,
   # BUndle and return
   #out = list( Y_zz = Y_zz,
   out = list( Y_zz_g2 = Y_zz_g2,
-              B_s2 = B_s2 )
-  if(record_steps) out$record = record
+              B_s2 = B_s2,
+              TotalEggs_g2 = TotalEggs_g2,
+              TotalSB_g2 = TotalSB_g2,
+              TotalZ_s2 = TotalZ_s2 )
+  #if(record_steps) out$record = record
   return(out)
 }
 

@@ -56,9 +56,14 @@ function( p ) {
   Q_tij = array( NA, dim=c(nrow(Bobs_ti),n_species,n_species) )
   Nexp_ta_g2 = Nobs_ta_g2
   Wexp_ta_g2 = Wobs_ta_g2
+  TotalSB_tg2 = TotalEggs_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=stanza_data$n_g2 )
+  TotalZ_ts2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=stanza_data$n_s2 )
 
   # Initial condition
   B_ti[1,] = out_initial$B_i * exp(p$delta_i)
+  TotalEggs_tg2[1,] = p$baseEggs_g2 * settings$STEPS_PER_YEAR
+  TotalSB_tg2[1,] = p$baseSB_g2 * settings$STEPS_PER_YEAR
+  TotalZ_ts2[1,] = 0
   jnll = 0
   if( control$process_error == "alpha" ){
     epsilon_ti[1,] = p$alpha_ti[1,] 
@@ -120,6 +125,10 @@ function( p ) {
       #Y_zz = proj_stanzas$Y_zz
       #Y_tzz[t,,] = Y_zz
       Y_zz_g2 = proj_stanzas$Y_zz_g2
+      #browser()
+      TotalEggs_tg2[t,] = proj_stanzas$TotalEggs_g2
+      TotalSB_tg2[t,] = proj_stanzas$TotalSB_g2
+      TotalZ_ts2[t,] = proj_stanzas$TotalZ_s2
       for( g2 in seq_along(Y_zz_g2) ){
         Y_tzz_g2[[g2]][t,,] = Y_zz_g2[[g2]]
       }
@@ -239,7 +248,7 @@ function( p ) {
       #}
       Nexp_a = rep(0, max(Xg2_zz[,'age_class']+1)) * p$s50_z[index] / p$s50_z[index] # 0 through MaxAge so +1 length
       for( z in seq_len(nrow(Xg2_zz)) ){
-        Nexp_a[Xg2_zz[z,'age_class']+1] = Nexp_a[Xg2_zz[z,'age_class']+1] + selex_a[z]*Yg2_tzz[t,z,'NageS']
+        Nexp_a[Xg2_zz[z,'age_class']+1] = Nexp_a[Xg2_zz[z,'age_class']+1] + selex_a[z] * exp(Yg2_tzz[t,z,'log_NageS'])
       }
       # Comps are end-of-year abundance
       #which_a = which( stanza_data$X_zz[which_z,'AGE'] %in% unique(stanza_data$X_zz[which_z,'age_class']) )
@@ -283,10 +292,12 @@ function( p ) {
       #}
       Wexp_a = Nexp_a = rep(0,max(Xg2_zz[,'age_class']+1)) # 0 through MaxAge so +1 length
       for( z in seq_len(nrow(Xg2_zz)) ){
-        Nexp_a[Xg2_zz[z,'age_class']+1] = Nexp_a[Xg2_zz[z,'age_class']+1] + Yg2_tzz[t,z,'NageS']
+        #Nexp_a[Xg2_zz[z,'age_class']+1] = Nexp_a[Xg2_zz[z,'age_class']+1] + Yg2_tzz[t,z,'NageS']
+        Nexp_a[Xg2_zz[z,'age_class']+1] = Nexp_a[Xg2_zz[z,'age_class']+1] + exp(Yg2_tzz[t,z,'log_NageS'])
       }
       for( z in seq_len(nrow(Xg2_zz)) ){
-        prop = Yg2_tzz[t,z,'NageS'] / Nexp_a[Xg2_zz[z,'age_class']+1]
+        #prop = Yg2_tzz[t,z,'NageS'] / Nexp_a[Xg2_zz[z,'age_class']+1]
+        prop = exp(Yg2_tzz[t,z,'log_NageS']) / Nexp_a[Xg2_zz[z,'age_class']+1]
         Wexp_a[Xg2_zz[z,'age_class']+1] = Wexp_a[Xg2_zz[z,'age_class']+1] + prop * Yg2_tzz[t,z,'WageS']
       }
       Wexp_ta_g2[[index]][index2,] = Wexp_a[-1] * exp(p$log_winf_z[index])   # Remove age-0
@@ -314,15 +325,32 @@ function( p ) {
   # Remove NAs to deal with missing values in Bobs_ti and Cobs_ti
   jnll = jnll - ( sum(loglik1_ti) + sum(loglik2_ti) + sum(loglik3_ti) + sum(loglik4_ti) + sum(loglik5_tg2,na.rm=TRUE) + sum(loglik6_tg2) + sum(loglik7_tg2) + log_prior_value )
   
+  ###############
   # Derived
-  #N_at = apply( Y_tzz, MARGIN=1,
-  #              FUN=\(M) tapply(M[,'NageS'],INDEX=stanza_data$X_zz[,'age_class'],FUN=mean) )
+  ###############
+
+  # Steepness
   h_g2 = 0.2 * p$SpawnX_g2 / (p$SpawnX_g2 - 1 + 0.2)
   REPORT( h_g2 )
   ADREPORT( h_g2 )
 
+  # Abundance-at-age for multistanza groups
+  N_ta_g2 = vector("list", length=length(Y_tzz_g2) )
+  names(N_ta_g2) = names(Y_tzz_g2 )
+  for( g2 in seq_along(Y_tzz_g2) ){
+    N_ta2 = exp(Y_tzz_g2[[g2]][,,'log_NageS'])
+    INDEX = stanza_data$X_zz_g2[[g2]][,'age_class']
+    N_at = apply( N_ta2, MARGIN=1, FUN=\(x) tapply(X=x, INDEX=INDEX, FUN=sum) )
+    rownames(N_at) = unique(stanza_data$X_zz_g2[[g2]][,'age_class'])
+    N_ta_g2[[g2]] = t(N_at)
+  }
+  REPORT( N_ta_g2 )
+
   # Reporting
   REPORT( B_ti )
+  REPORT( TotalEggs_tg2 )
+  REPORT( TotalSB_tg2 )
+  REPORT( TotalZ_ts2 )
   if(control$process_error=="alpha") REPORT( Bhat_ti )
   REPORT( Chat_ti )
   REPORT( Bmean_ti )
