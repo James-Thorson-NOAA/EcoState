@@ -419,7 +419,7 @@ function( taxa,
   }
 
   #
-  get_hessian = function(obj,par){
+  get_hessian = function(obj, par){
     if(is.null(obj$random) & is.null(obj$profile)){
       H = obj$he(x=par)
     }else{
@@ -439,6 +439,11 @@ function( taxa,
   }
   rep = obj$report()
   parhat = obj$env$parList()
+
+  # Sanity checks
+  if( any(rep$B_ti==0) ){
+    warning("Some `B_ti=0` which typically occurs in multistanza models when W<Wmat for one or more years")
+  }
 
   # sdreport
   if( isTRUE(control$getsd) ){

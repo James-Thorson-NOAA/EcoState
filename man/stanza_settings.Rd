@@ -12,9 +12,15 @@ stanza_settings(
   Wmat,
   Amax,
   SpawnX,
+  Leading,
+  fit_K = c(),
+  fit_d = c(),
+  Amat = NULL,
+  Wmatslope,
   STEPS_PER_YEAR = 1,
   comp_weight = c("multinom", "dir", "dirmult"),
-  correct_errors = FALSE
+  correct_errors = FALSE,
+  min_agecomp_prob = 0
 )
 }
 \description{

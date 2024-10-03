@@ -24,6 +24,7 @@ function( settings ){
   Amat_g2 = settings$Amat[settings$unique_stanza_groups]
   SpawnX_g2 = settings$SpawnX[settings$unique_stanza_groups]
   Amax_s2 = settings$Amax[settings$multigroup_taxa]
+  Wmatslope_g2 = settings$Wmatslope[settings$unique_stanza_groups]
   #Leading_s2 = unlist(tapply( Amax_s2, FUN=\(v) v==max(v), INDEX=g2_s2))
   Leading_s2 = settings$Leading[settings$multigroup_taxa]
   plusage_g2 = tapply( Amax_s2, INDEX=g2_s2, FUN=max )
@@ -39,6 +40,7 @@ function( settings ){
   tmp = stanzainfo_s2z[which(stanzainfo_s2z[,'lead']==1),,drop=FALSE]
   stanzainfo_g2z = cbind( "Wmat" = Wmat_g2,
                           "Amat" = Amat_g2,
+                          "Wmatslope" = Wmatslope_g2,
                           "SpawnX" = SpawnX_g2,
                           "plusage" = plusage_g2,
                           "K" = K_g2,
@@ -82,6 +84,31 @@ function( settings ){
 }
 
 #' @export
+fecundity_by_weight <-
+function( W,
+          Wmat,
+          Wmatslope ){
+
+  # Globals
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+
+  #pos = function(x){
+  #  "c" <- ADoverload("c")
+  #  "[<-" <- ADoverload("[<-")
+  #  0.5*(abs(x)+x)
+  #}
+
+  if( is.infinite(Wmatslope) ){
+    out = W - Wmat
+    out = 0.5 * ( abs(out) + out )
+  }else{
+    out = plogis( (W - Wmat) * Wmatslope ) * W
+  }
+  return(out)
+}
+
+#' @export
 add_stanza_params <-
 function( p,
           stanza_data,
@@ -94,7 +121,9 @@ function( p,
   n_s2 = stanza_data$n_s2
   n_g2 = stanza_data$n_g2
   Amat_g2 = stanza_data$stanzainfo_g2z[,'Amat']
+  Wmatslope_g2 = stanza_data$stanzainfo_g2z[,'Wmatslope']
   d_g2 = plogis( p$logit_d_g2 )
+  inv1minus_d_g2 = 1 / (1 - d_g2)
   #Wmat_g2 = exp(p$log_winf_z[1]) * stanza_data$stanzainfo_g2z[,'Wmat']
   plusage_g2 = stanza_data$stanzainfo_g2z[,'plusage']
   stanzainfo_s2z = stanza_data$stanzainfo_s2z
@@ -106,18 +135,27 @@ function( p,
   # Replace Wmat with Amat if available
   which_replace = which(!is.na(Amat_g2))
   if( length(which_replace) > 0 ){
-    # Wmat = (1 - exp(-K * Amat)) ^ (1/(1-d))
-    p$Wmat_g2[which_replace] = (1 - exp(-Amat_g2[which_replace] * exp(p$log_K_g2[which_replace]))) ^ (1/(1-d_g2[which_replace]))
+    # Given:
+    #   dW = H * W^d - k * W
+    # Then:
+    #   W(A) = W_inf * (1 - exp(-k * (1-d) * A)) ^ (1/(1-d))
+    #
+    # Given:
+    #   W(A) = a * L(A)^b where b=3
+    # Then:
+    #   L(A) = L_inf * (1 - exp(-K * (1-m) * A)) ^ (1/(1-m))
+    # Where:
+    #   k = b * K = 3K
+    #   m = d*b + 1 - b = 3*d - 2
+    #
+    # Therefore:
+    #   Wmat = (1 - exp(-3*K*(1-d) * Amat)) ^ (1/(1-d))
+    k = 3 * exp(p$log_K_g2[which_replace])  # log_K_g2 is the log of K in length, where k = b*K and W = a * L^b, and we assume b=3
+    p$Wmat_g2[which_replace] = (1 - exp(-k * (1 - d_g2[which_replace]) * Amat_g2[which_replace])) ^ inv1minus_d_g2[which_replace]
   }
 
   # Globals
   vbm_g2 = (1 - 3 * exp(p$log_K_g2) / settings$STEPS_PER_YEAR)
-  d_g2 = plogis( p$logit_d_g2 )
-  pos = function(x){
-    "c" <- ADoverload("c")
-    "[<-" <- ADoverload("[<-")
-    0.5*(abs(x)+x)
-  }
   ################## EXPERIMENT WITH RTMB
   # EASIER TO LOOP THROUGH STANZAS
   #Y_zz = matrix(nrow=0, ncol=4)
@@ -141,11 +179,10 @@ function( p,
     t2_a = Xg2_zz[,'t2']
 
     # WageS and QageS
-    k = exp(p$log_K_g2[g2]) * 3
-    d = d_g2[g2]
-    WageS = (1 - exp(-k * (1 - d) * (AGE))) ^ (1 / (1 - d))
+    k = exp(p$log_K_g2[g2]) * 3     # 3 because W = L^3, i.e. converting VB length param K to weight param k
+    WageS = (1 - exp(-k * (1 - d_g2[g2]) * AGE)) ^ inv1minus_d_g2[g2]
     #WageS = exp(p$log_winf_z[1]) * (1 - exp(-k * (1 - d) * (AGE))) ^ (1 / (1 - d))
-    QageS = WageS ^ d
+    QageS = WageS ^ d_g2[g2]
 
     # SurvS
     Zrate = Z_s2[which_s2[t2_a]] / settings$STEPS_PER_YEAR
@@ -160,8 +197,8 @@ function( p,
     NageS = SurvS * baseRzeroS[g2]
 
     #
-    baseEggsStanza[g2] = sum(NageS * pos(WageS - p$Wmat_g2[g2]))
-    baseSpawnBio[g2] = sum(NageS * pos(WageS - p$Wmat_g2[g2]))
+    baseEggsStanza[g2] = sum(NageS * fecundity_by_weight(WageS, p$Wmat_g2[g2], Wmatslope_g2[g2]) )
+    baseSpawnBio[g2] = sum(NageS * fecundity_by_weight(WageS, p$Wmat_g2[g2], Wmatslope_g2[g2]) )
 
     #
     s = stanzainfo_t2z[which_leading,'s']
@@ -228,11 +265,12 @@ function( p,
   "c" <- ADoverload("c")
   "[<-" <- ADoverload("[<-")
   # Globals
-  vbm_g2 = (1 - 3 * stanza_data$stanzainfo_g2z[,'K'] / STEPS_PER_YEAR)
+  vbm_g2 = (1 - 3 * stanza_data$stanzainfo_g2z[,'K'] / STEPS_PER_YEAR)       # 3*K = k, where k is from dW = H*W^d - k*W
   #SB_g2 = exp(p$logPB_i)[stanza_data$stanzainfo_s2z[,'s']] # Get it to be class-advector
   SB_g2 = Eggs_g2 = rep(0, stanza_data$n_g2 )
   Wmat_g2 = p$Wmat_g2
   Amat_g2 = stanza_data$stanzainfo_g2z[,'Amat']
+  Wmatslope_g2 = stanza_data$stanzainfo_g2z[,'Wmatslope']
   #Wmat_g2 = exp(p$log_winf_z[1]) * stanza_data$stanzainfo_g2z[,'Wmat']
   #Y_zz = p$Y_zz
   Y_zz_g2 = p$Y_zz_g2
@@ -273,11 +311,11 @@ function( p,
     }
     return(out)
   }
-  pos = function(x){
-    "c" <- ADoverload("c")
-    "[<-" <- ADoverload("[<-")
-    0.5*(abs(x)+x)
-  }
+  #pos = function(x){
+  #  "c" <- ADoverload("c")
+  #  "[<-" <- ADoverload("[<-")
+  #  0.5*(abs(x)+x)
+  #}
   # Loop through stanza-variables
   # Only does a single STEP of STEPS_PER_YEAR: Allows p to have updated B_t for each step
   Z_s2 = QB_s2 = rep( 0, nrow(stanza_data$stanzainfo_s2z) )
@@ -317,7 +355,7 @@ function( p,
     # Record SpawnBiomass
     Yg2_zz = Y_zz_g2[[g2]]
     #SB_g2[g2] = sum(Yg2_zz[,'NageS'] * pos(Yg2_zz[,'WageS'] - Wmat_g2[g2]))
-    SB_g2[g2] = sum( exp(Yg2_zz[,'log_NageS']) * pos(Yg2_zz[,'WageS'] - Wmat_g2[g2]))
+    SB_g2[g2] = sum( exp(Yg2_zz[,'log_NageS']) * fecundity_by_weight(Yg2_zz[,'WageS'], Wmat_g2[g2], Wmatslope_g2[g2]) )
 
     # Plus-group
     #Yg2_zz[,'NageS'] = increase_vector(Yg2_zz[,'NageS'], plus_group="add")
@@ -413,13 +451,11 @@ function( p,
               Pars = p,
               what = "all")
     FoodGain = colSums(dBdt_step$Q_ij)
-    #FoodGain = (t(rep(1,length(dBdt_step$G_i))) %*% dBdt_step$Q_ij)[1,]
     # Update numbers
     updated_values = update_stanzas(
                   p = p,
                   stanza_data = stanza_data,
                   FoodGain_s = FoodGain,
-                  #LossPropToB_s = dBdt_step$G_i,
                   LossPropToB_s = dBdt_step$M_i,
                   F_s = exp(p$logF_i),
                   STEPS_PER_YEAR = STEPS_PER_YEAR )
@@ -454,7 +490,6 @@ function( p,
                              Y_zz_g2 = Y_zz_g2 )
 
   # BUndle and return
-  #out = list( Y_zz = Y_zz,
   out = list( Y_zz_g2 = Y_zz_g2,
               B_s2 = B_s2,
               TotalEggs_g2 = TotalEggs_g2,
@@ -482,6 +517,7 @@ function( taxa,
           fit_K = c(),
           fit_d = c(),
           Amat = NULL,
+          Wmatslope,
           STEPS_PER_YEAR = 1,
           comp_weight = c("multinom","dir","dirmult"),
           correct_errors = FALSE,
@@ -503,6 +539,7 @@ function( taxa,
   if(missing(Leading)){
     Leading = unlist(tapply( Amax, FUN=\(v) v==max(v), INDEX=match(stanza_groups, unique_stanza_groups) ))
   }
+  if(missing(Wmatslope)) Wmatslope = array(Inf, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
   names(Leading) = names(Amax)
 
   if( length(unique_stanza_groups)==0 ){
@@ -525,6 +562,7 @@ function( taxa,
     d = d,
     Wmat = Wmat,
     Amat = Amat,
+    Wmatslope = Wmatslope,
     Amax = Amax,
     fit_K = fit_K,
     fit_d = fit_d,

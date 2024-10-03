@@ -69,6 +69,11 @@ function( p ) {
     epsilon_ti[1,] = p$alpha_ti[1,] 
   }
   Y_zz_g2 = p$Y_zz_g2
+  # Compute trophic level
+  TL_ti[1,] = compute_tracer( Q_ij = out_initial$Q_ij,
+                              inverse_method = control$inverse_method,
+                              type_i = type_i,
+                              tracer_i = rep(1,n_species) )
 
   # 
   Y_tzz_g2 = NULL
@@ -346,6 +351,14 @@ function( p ) {
   }
   REPORT( N_ta_g2 )
 
+  # REPORT in case Amat is supplied, such that Wmat is calculated internally
+  Wmat_g2 = p$Wmat_g2
+  REPORT( Wmat_g2 )
+
+  #
+  B0_i = out_initial$B_i
+  REPORT( B0_i )
+
   # Reporting
   REPORT( B_ti )
   REPORT( TotalEggs_tg2 )
@@ -392,11 +405,12 @@ function( p ) {
 
   if( control$sdreport_detail >= 1 ){
     ADREPORT( B_ti )
+    ADREPORT( B0_i )
   }
   if( control$sdreport_detail >= 2 ){
     # Relative biomass ... outer(.) and X %o% are failing
     relB_ti = B_ti
-    for(t in 1:nrow(relB_ti)) relB_ti[t,] = B_ti[t,] / out_initial$B_i
+    for(t in 1:nrow(relB_ti)) relB_ti[t,] = B_ti[t,] / B0_i
     REPORT( relB_ti )
     ADREPORT( relB_ti )
   }
