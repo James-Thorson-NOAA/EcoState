@@ -446,6 +446,7 @@ function( taxa,
   }
 
   # sdreport
+  derived = list()
   if( isTRUE(control$getsd) ){
     #hessian.fixed = optimHess( par = opt$par, 
     #                  fn = obj$fn, 
@@ -455,6 +456,13 @@ function( taxa,
                       par.fixed = opt$par,
                       hessian.fixed = hessian.fixed,
                       getJointPrecision = control$getJointPrecision )
+    if( length(control$derived_quantities) > 0 ){
+      # Relist
+      tmp_list = as.list(sdrep, report=TRUE, what="Estimate")[["do.call(\"c\", derived_values)"]]
+      derived$Est = relist( flesh=tmp_list, skeleton=obj$report()$derived_values )
+      tmp_list = as.list(sdrep, report=TRUE, what="Std. Error")[["do.call(\"c\", derived_values)"]]
+      derived$SE = relist( flesh=tmp_list, skeleton=obj$report()$derived_values )
+    }
   }else{
     hessian.fixed = sdrep = NULL
   }
@@ -493,6 +501,7 @@ function( taxa,
     opt = opt,
     rep = rep,
     sdrep = sdrep,
+    derived = derived,
     tmb_inputs = list(p=p, map=map),
     call = match.call(),
     run_time = Sys.time() - start_time,
@@ -542,8 +551,7 @@ function( taxa,
 #' @param F_type whether to integrate catches along with biomass (\code{"integrated"})
 #'        or calculate catches from the Baranov catch equation applied to average 
 #'        biomass (\code{"averaged"})
-#' @param sdreport_detail increasing value increases the set of derived quantities
-#'        that are included when calculating standard errors
+#' @param derived_quantities character-vector listing objects to ADREPORT
 #' @param tmbad.sparse_hessian_compress passed to [TMB::config()], and enabling 
 #'        an experimental feature to save memory when first computing the inner
 #'        Hessian matrix.  Using \code{tmbad.sparse_hessian_compress=1} seems
@@ -573,7 +581,7 @@ function( nlminb_loops = 1,
           process_error = c("epsilon", "alpha"),
           n_steps = 10,
           F_type = c("integrated", "averaged"),
-          sdreport_detail = 1,
+          derived_quantities = c("h_g2","B_ti","B0_i"),
           scale_solver = c("joint", "simple"),
           inverse_method = c("Standard", "Penrose_moore"),
           tmbad.sparse_hessian_compress = 1,
@@ -605,7 +613,7 @@ function( nlminb_loops = 1,
     integration_method = integration_method,
     n_steps = n_steps,
     F_type = F_type,
-    sdreport_detail = sdreport_detail,
+    derived_quantities = derived_quantities,
     scale_solver = scale_solver,
     inverse_method = inverse_method,
     process_error = process_error,

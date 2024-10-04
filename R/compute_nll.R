@@ -45,7 +45,7 @@ function( p ) {
     p_t$nu_i = rep(0,n_species)
     p_t$phi_g2 = rep(0,settings$n_g2)
   out_initial = dBdt( Time = 1,
-              State = c(p$logB_i,rep(0,n_species)), 
+              State = c( exp(p$logB_i), rep(0,n_species)),
               Pars = p_t,
               what = "stuff" )
   
@@ -59,7 +59,7 @@ function( p ) {
   TotalSB_tg2 = TotalEggs_tg2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=stanza_data$n_g2 )
   TotalZ_ts2 = matrix( 0, nrow=nrow(Bobs_ti), ncol=stanza_data$n_s2 )
 
-  # Initial condition
+  # Define initial condition
   B_ti[1,] = out_initial$B_i * exp(p$delta_i)
   TotalEggs_tg2[1,] = p$baseEggs_g2 * settings$STEPS_PER_YEAR
   TotalSB_tg2[1,] = p$baseSB_g2 * settings$STEPS_PER_YEAR
@@ -69,11 +69,19 @@ function( p ) {
     epsilon_ti[1,] = p$alpha_ti[1,] 
   }
   Y_zz_g2 = p$Y_zz_g2
-  # Compute trophic level
-  TL_ti[1,] = compute_tracer( Q_ij = out_initial$Q_ij,
+
+  # Extract initial conditions for later reporting
+  B0_i = out_initial$B_i
+  TL0_i = compute_tracer( Q_ij = out_initial$Q_ij,
                               inverse_method = control$inverse_method,
                               type_i = type_i,
                               tracer_i = rep(1,n_species) )
+  G0_ti = out_initial$G_i
+  g0_ti = out_initial$g_i
+  M0_ti = out_initial$M_i
+  m0_ti = out_initial$m_i
+  M20_ti = out_initial$M2_i
+  m20_ti = out_initial$m2_i
 
   # 
   Y_tzz_g2 = NULL
@@ -176,27 +184,32 @@ function( p ) {
     M2_ti[t,] = (DC_ij %*% (Bmean_ti[t,] * exp(p$logQB_i))) / Bmean_ti[t,]
 
     # Record more using midpoint biomass Bmean_ti
-    out = dBdt( Time = 0, 
+    out_mean = dBdt( Time = 0,
                 State = c(Bmean_ti[t,], rep(0,n_species)),
                 Pars = p_t,
                 what = "stuff" )
 
     # Must calculate during loop because G_ti is NA for t=1
     #tmp = adsparse_to_matrix(out$Q_ij)
-    tmp = out$Q_ij
-    G_ti[t,] = out$G_i
-    g_ti[t,] = out$g_i
-    M_ti[t,] = out$M_i
-    m_ti[t,] = out$m_i
-    M2_ti[t,] = out$M2_i
-    m2_ti[t,] = out$m2_i
-    Q_tij[t,,] = tmp
-    dBdt0_ti[t,] = out$dBdt0_i
-    # Compute trophic level
-    TL_ti[t,] = compute_tracer( Q_ij = tmp,
+    G_ti[t,] = out_mean$G_i
+    g_ti[t,] = out_mean$g_i
+    M_ti[t,] = out_mean$M_i
+    m_ti[t,] = out_mean$m_i
+    M2_ti[t,] = out_mean$M2_i
+    m2_ti[t,] = out_mean$m2_i
+    dBdt0_ti[t,] = out_mean$dBdt0_i
+    Q_tij[t,,] = out_mean$Q_ij
+    TL_ti[t,] = compute_tracer( Q_ij = out_mean$Q_ij,
                                 inverse_method = control$inverse_method,
                                 type_i = type_i,
                                 tracer_i = rep(1,n_species) )
+
+    # Compute trophic level at the end of each time
+    # Not needed ... definiting stuff at annual averages
+    #out = dBdt( Time = 0,
+    #            State = c(B_ti[t,], rep(0,n_species)),
+    #            Pars = p_t,
+    #            what = "stuff" )
   }
   F_ti = exp(p$logF_ti)
   Z_ti = F_ti + M_ti 
@@ -337,27 +350,70 @@ function( p ) {
   # Steepness
   h_g2 = 0.2 * p$SpawnX_g2 / (p$SpawnX_g2 - 1 + 0.2)
   REPORT( h_g2 )
-  ADREPORT( h_g2 )
 
-  # Abundance-at-age for multistanza groups
-  N_ta_g2 = vector("list", length=length(Y_tzz_g2) )
-  names(N_ta_g2) = names(Y_tzz_g2 )
+  # Abundance-at-age
+  W_ta_g2 = N_ta_g2 = vector("list", length=length(Y_tzz_g2) )
+  names(W_ta_g2) = names(N_ta_g2) = names(Y_tzz_g2 )
   for( g2 in seq_along(Y_tzz_g2) ){
+    # Abundance-at-age
     N_ta2 = exp(Y_tzz_g2[[g2]][,,'log_NageS'])
-    INDEX = stanza_data$X_zz_g2[[g2]][,'age_class']
-    N_at = apply( N_ta2, MARGIN=1, FUN=\(x) tapply(X=x, INDEX=INDEX, FUN=sum) )
+    a_a2 = stanza_data$X_zz_g2[[g2]][,'age_class'] + 1
+    N_at = apply( N_ta2, MARGIN=1, FUN=\(x) tapply(X=x, INDEX=a_a2, FUN=sum) )
     rownames(N_at) = unique(stanza_data$X_zz_g2[[g2]][,'age_class'])
     N_ta_g2[[g2]] = t(N_at)
+    # Weight at age
+    #W_at = N_at
+    #W_ta_g2[[g2]] = t(N_at)
+    for( t in seq_len(nrow(N_ta_g2[[g2]])) ){
+      W_ta2 = Y_tzz_g2[[g2]][,,'WageS']
+      N_ta2 = N_ta_g2[[g2]][,a_a2]
+      prop_ta2 = exp(Y_tzz_g2[[g2]][,,'log_NageS']) / N_ta2
+      #prop_a2 = exp(Y_tzz_g2[[g2]][t,,'log_NageS']) /
+      W_ta2 = W_ta2 * prop_ta2
+      W_at = apply( W_ta2, MARGIN=1, FUN=\(x) tapply(X=x, INDEX=a_a2, FUN=sum) )
+      #W_at[,t] = tapply( W_a2, INDEX=a_a2, FUN=sum )
+    }
+    W_ta_g2[[g2]] = t(W_at)
   }
   REPORT( N_ta_g2 )
+  REPORT( W_ta_g2 )
+
+  ## weight-at-age for multistanza groups
+  #for( g2 in seq_along(Y_tzz_g2) ){      # W_ta_g2[[g2]] =
+  #  #N_ta_g2[[g2]] = matrix( 0, nrow=dim(Y_tzz_g2[[g2]])[1], ncol=length(unique(stanza_data$X_zz_g2[[g2]][,'age_class'])) )
+  #  for( t in seq_len(nrow(N_ta_g2[[g2]])) ){
+  #    # Abundance-at-age
+  #    N_a2 = exp(Y_tzz_g2[[g2]][t,,'log_NageS'])
+  #    a_a2 = stanza_data$X_zz_g2[[g2]][,'age_class'] + 1
+  #    N_a = tapply( N_a2, INDEX=a_a2, FUN=sum )
+  #    #N_ta_g2[[g2]][t,] = N_a
+  #    # Abundance-weighted average weight-at-age
+  #    W_a2 = Y_tzz_g2[[g2]][t,,'WageS']
+  #    prop_a2 = N_a2 / N_a[a_a2]
+  #    W_ta_g2[[g2]][t,] = tapply( W_a2 * prop_a2, INDEX=a_a2, FUN=sum )
+  #  }
+  #  colnames(N_ta_g2[[g2]]) = colnames(W_ta_g2[[g2]]) = unique(stanza_data$X_zz_g2[[g2]][,'age_class'])
+  #}
+  #REPORT( W_ta_g2 )
 
   # REPORT in case Amat is supplied, such that Wmat is calculated internally
   Wmat_g2 = p$Wmat_g2
   REPORT( Wmat_g2 )
 
-  #
-  B0_i = out_initial$B_i
+  # Initial conditions
   REPORT( B0_i )
+  REPORT( TL0_i )
+  REPORT( G0_ti )
+  REPORT( g0_ti )
+  REPORT( M0_ti )
+  REPORT( m0_ti )
+  REPORT( M20_ti )
+  REPORT( m20_ti )
+
+  # Relative biomass
+  BoverB0_ti = B_ti
+  for(t in 1:nrow(BoverB0_ti)) BoverB0_ti[t,] = B_ti[t,] / B0_i
+  REPORT( BoverB0_ti )
 
   # Reporting
   REPORT( B_ti )
@@ -372,7 +428,6 @@ function( p ) {
   REPORT( G_ti )
   REPORT( g_ti )
   REPORT( M_ti )
-  #REPORT( N_at )
   REPORT( m_ti )
   REPORT( M2_ti )
   REPORT( m2_ti )
@@ -390,41 +445,22 @@ function( p ) {
   REPORT( log_prior_value )
   REPORT( jnll )
   REPORT( TL_ti )
-  #REPORT( Y_tzz )
   REPORT( Y_tzz_g2 )
   REPORT( stanza_data )
   REPORT( Nexp_ta_g2 )
   REPORT( Wexp_ta_g2 )
 
   if( settings$n_g2 >0 ){
-    baseR0_g2 = p$baseR0_g2
-    baseSB_g2 = p$baseSB_g2
-    REPORT( baseR0_g2 )
-    REPORT( baseSB_g2 )
+    R0_g2 = p$baseR0_g2
+    SB0_g2 = p$baseSB_g2
+    REPORT( R0_g2 )
+    REPORT( SB0_g2 )
   }
 
-  if( control$sdreport_detail >= 1 ){
-    ADREPORT( B_ti )
-    ADREPORT( B0_i )
-  }
-  if( control$sdreport_detail >= 2 ){
-    # Relative biomass ... outer(.) and X %o% are failing
-    relB_ti = B_ti
-    for(t in 1:nrow(relB_ti)) relB_ti[t,] = B_ti[t,] / B0_i
-    REPORT( relB_ti )
-    ADREPORT( relB_ti )
-  }
-  if( control$sdreport_detail >= 3 ){
-    ADREPORT( Chat_ti )
-    ADREPORT( Bexp_ti )
-    ADREPORT( G_ti )
-    ADREPORT( g_ti )
-    ADREPORT( M_ti )
-    ADREPORT( m_ti )
-    ADREPORT( F_ti )
-    ADREPORT( Z_ti )
-    ADREPORT( dBdt0_ti )
-    ADREPORT( TL_ti )
+  if( length(control$derived_quantities) > 0 ){
+    derived_values = mget( control$derived_quantities, ifnotfound=NA )
+    REPORT( derived_values )
+    ADREPORT( do.call("c", derived_values) )
   }
 
   return(jnll)
