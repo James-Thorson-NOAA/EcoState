@@ -396,9 +396,11 @@ function( p ) {
   #}
   #REPORT( W_ta_g2 )
 
-  # REPORT in case Amat is supplied, such that Wmat is calculated internally
+  # Allow for ADREPORT
   Wmat_g2 = p$Wmat_g2
+  X_ij = 1 + exp(Xprime_ij)
   REPORT( Wmat_g2 )
+  REPORT( X_ij )
 
   # Initial conditions
   REPORT( B0_i )
