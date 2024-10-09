@@ -536,15 +536,15 @@ function( taxa,
   # More defaults
   if(missing(SpawnX)) SpawnX = array(2, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
   if(missing(d)) d = array(2/3, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
-  if(missing(Leading)){
-    Leading = unlist(tapply( Amax, FUN=\(v) v==max(v), INDEX=match(stanza_groups, unique_stanza_groups) ))
-  }
   if(missing(Wmatslope)) Wmatslope = array(Inf, dim=length(unique_stanza_groups), dimnames=list(unique_stanza_groups))
-  names(Leading) = names(Amax)
 
   if( length(unique_stanza_groups)==0 ){
     K = d = Wmat = Amax = vector()
   }
+  if(missing(Leading)){
+    Leading = unlist(tapply( Amax, FUN=\(v) v==max(v), INDEX=match(stanza_groups, unique_stanza_groups) ))
+  }
+  names(Leading) = names(Amax)
 
   #
   if( is.null(Amat) ){

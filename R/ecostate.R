@@ -420,7 +420,7 @@ function( taxa,
 
   #
   get_hessian = function(obj, par){
-    if(is.null(obj$random) & is.null(obj$profile)){
+    if( (length(obj$env$random)==0) & (sum(obj$env$profile)==0) ){
       H = obj$he(x=par)
     }else{
       H = optimHess(par, fn=obj$fn, gr=obj$gr)
