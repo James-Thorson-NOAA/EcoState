@@ -37,9 +37,16 @@
 #'        to equilibrium biomass is estimated as a fixed effect
 #' @param fit_eps Character-vector listing \code{taxa} for which the
 #'        model should estimate annual process errors in dB/dt
+#' @param fit_PB Character-vector listing \code{taxa} for which equilibrium
+#'        production per biomass is estimated.  Note that it is likely
+#'        a good idea to include a prior for any species for which this is estimated.
+#' @param fit_QB Character-vector listing \code{taxa} for which equilibrium
+#'        consumption per biomass is estimated.  Note that it is likely
+#'        a good idea to include a prior for any species for which this is estimated.
 #' @param log_prior A user-provided function that takes as input the list of
 #'        parameters \code{out$obj$env$parList()} where \code{out} is the output from
-#'        \code{ecostate()}, and returns the log-prior probability.  For example
+#'        \code{ecostate()}, and returns a numeric vector
+#'        where the sum is the log-prior probability.  For example
 #'        \code{log_prior = function(p) dnorm( p$logq_i[1], mean=0, sd=0.1, log=TRUE)}
 #'        specifies a lognormal prior probability for the catchability coefficient
 #'        for the first \code{taxa} with logmean of zero and logsd of 0.1
@@ -77,6 +84,7 @@ function( taxa,
           fit_B0 = vector(),
           fit_EE = vector(),
           fit_PB = vector(),
+          fit_QB = vector(),
           fit_eps = vector(),
           fit_nu = vector(),
           fit_phi = vector(),
@@ -233,7 +241,6 @@ function( taxa,
   map = list()
   
   # map these off by default
-  map$logQB_i = factor( rep(NA,n_species) )
   map$U_i = factor( rep(NA,n_species) )
   map$DC_ij = factor( array(NA,dim=dim(p$DC_ij)) )
   map$Xprime_ij = factor( array(NA,dim=dim(p$Xprime_ij)) )
@@ -241,6 +248,7 @@ function( taxa,
   map$Wmat_g2 = factor( rep(NA,length(p$Wmat_g2)) )
 
   # map these off based on options
+  map$logQB_i = factor( ifelse(taxa %in% fit_QB, seq_len(n_species), NA) )
   map$logPB_i = factor( ifelse(taxa %in% fit_PB, seq_len(n_species), NA) )
   map$log_K_g2 = factor(ifelse(settings$unique_stanza_groups %in% settings$fit_K, seq_len(settings$n_g2), NA)) #  factor( rep(NA,length(p$K_g2)) )
   map$logit_d_g2 = factor(ifelse(settings$unique_stanza_groups %in% settings$fit_d, seq_len(settings$n_g2), NA)) #  factor( rep(NA,length(p$K_g2)) )
@@ -392,6 +400,13 @@ function( taxa,
   #})
   #environment(add_equilibrium) <- data3
 
+  # Load data in environment for function "dBdt"
+  data4 = local({
+                  "c" <- ADoverload("c")
+                  "[<-" <- ADoverload("[<-")
+                  environment()
+  })
+  environment(log_prior) <- data4
 
   # Make TMB object
   #browser()
@@ -473,6 +488,7 @@ function( taxa,
   
   # bundle and return output (all necessary inputs for compute_nll)
   internal = list(
+    call = match.call(),
     parhat = parhat,
     control = control,
     settings = settings,

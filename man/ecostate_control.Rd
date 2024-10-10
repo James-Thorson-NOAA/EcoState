@@ -22,7 +22,7 @@ ecostate_control(
   process_error = c("epsilon", "alpha"),
   n_steps = 10,
   F_type = c("integrated", "averaged"),
-  sdreport_detail = 1,
+  derived_quantities = c("h_g2", "B_ti", "B0_i"),
   scale_solver = c("joint", "simple"),
   inverse_method = c("Standard", "Penrose_moore"),
   tmbad.sparse_hessian_compress = 1,
@@ -80,8 +80,7 @@ efficient.}
 or calculate catches from the Baranov catch equation applied to average
 biomass (\code{"averaged"})}
 
-\item{sdreport_detail}{increasing value increases the set of derived quantities
-that are included when calculating standard errors}
+\item{derived_quantities}{character-vector listing objects to ADREPORT}
 
 \item{tmbad.sparse_hessian_compress}{passed to \code{\link[TMB:config]{TMB::config()}}, and enabling
 an experimental feature to save memory when first computing the inner
